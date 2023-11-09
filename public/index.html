@@ -1,17 +1,29 @@
 <!DOCTYPE html>
 <html lang="">
-  <head>
+
+<head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <link rel="icon" href="<%= BASE_URL %>favicon.ico">
     <title><%= htmlWebpackPlugin.options.title %></title>
-  </head>
-  <body>
+</head>
+
+<body>
     <noscript>
-      <strong>We're sorry but <%= htmlWebpackPlugin.options.title %> doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
+        <strong>We're sorry but <%= htmlWebpackPlugin.options.title %> doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
     </noscript>
     <div id="app"></div>
+    <script type="text/javascript">
+        window._AMapSecurityConfig = {
+            securityJsCode:'ece9810e14d7478d2e3176f1c7aff235',
+        }
+    </script>
     <!-- built files will be auto injected -->
-  </body>
+    <script type="text/javascript" src="//webapi.amap.com/maps?v=1.4.15&key=dbefebf496f6cb711d1e85fd2603a57c"></script>
+    <script type="text/javascript" src="https://webapi.amap.com/maps?v=1.4.15&key=dbefebf496f6cb711d1e85fd2603a57c&plugin=AMap.DistrictSearch,AMap.Scale,AMap.ToolBar,AMap.TileLayer,AMap.Marker"></script>
+    <!-- UI组件库 1.0 -->
+    <script src="//webapi.amap.com/ui/1.0/main.js?v=1.0.11"></script>
+</body>
+
 </html>

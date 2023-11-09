@@ -1,5 +1,5 @@
 <template>
-    <div class="map-view" ref="mapContainer" style="width: 80%;height: 80%;">
+    <div class="map-view" ref="mapContainer" style="width: 100%;height: 100%;">
 
     </div>
 </template>
@@ -8,18 +8,24 @@
 import * as echarts from 'echarts'
 import chinaGeoJSON from '../../assets/data/chinaMap.json'
 import api from '@/plugin/api'
+import "echarts-extension-amap"
+
+const AMap = window.AMap || null
 
 export default {
     name: 'MapView',
     data() {
         return {
-            map: null,
+            echartsMap: null,
             hospitals: null,
             cityHospitals: [],
             basicHospitals: null,
             timer: null,
-            refreshTime: 3000,
-            newScatters: []
+            refreshTime: 300000,
+            newScatters: [],
+            opts: {},
+            district: [],
+
         }
     },
     computed: {
@@ -39,7 +45,7 @@ export default {
     },
     mounted() {
         this.getHospitals()
-
+        this.initMapData()
         if (!this.timer) this.onTimeReresh()
     },
     beforeDestroy() {
@@ -51,41 +57,44 @@ export default {
          */
         initMap() {
             echarts.registerMap('china', chinaGeoJSON)
-
+            
             let option = {
                 animation: true,
-                geo: {
-                    map: "china",
-                    roam: true,
-                    zoom: 1.63,
-                    center: [105, 36],
-                    scaleLimit: {
-                        min: 1,
-                        max: 15
+                tooltip: {
+                    trigger: 'item',
+                    formatter: (params) => {
+                        let content = '<div>' +
+                            '<p>机构名称：' + params.data.adress.name + '</p>' +
+                            '<p>地址：' + params.data.adress.address + '</p>' +
+                            '<p>认证医生数：' + params.data.doctor_num + '</p>' +
+                            '<p>抗蛇毒血清计算库存数：' + params.data.antivenom_num + '</p>' +
+                            '<p>经纬度坐标' + params.data.value[0] + ',' + params.data.value[1] + '</p>' +
+                            '</div>'
+                        return content
+                    }
+                },
+                amap: {
+                    viewMode: '3D',
+                    center: [108.39, 39.9],
+                    zoom: 4,
+                    resizeEnable: true,
+                    renderOnMoving: true,
+                    mapStyle: 'amap://styles/fresh',
+                    echartsLayerInteractive: true,
+                    echartsLayerZIndex: 2019,
+                    labelzIndex: -100,
+                    zoomstart: function () {
+                        amap.setOptions({
+                            labelzIndex: 100 // 开始缩放时显示文字标注
+                        })
                     },
-                    normal: {
-                        position: 'inside',
-                        align: 'center',
-                        show: true,
-                        fontSize: "10",
-                        color: "#696969"
-                    },
-                    emphasis: {
-                        show: false,
-                        itemStyle: {
-                            areaColor: "pink",
-
-                        }
-                    },
-                    itemStyle: {
-                        areaColor: "#eeeeee",
-                    },
-                    show: true
+                    // label: 100,
+                    // showLabel: false,
                 },
                 series: [
                     {
                         type: 'effectScatter',
-                        coordinateSystem: 'geo',
+                        coordinateSystem: 'amap',
                         data: this.newScatters,
                         itemStyle: {
                             // color: '#4577ba',
@@ -108,7 +117,7 @@ export default {
                     },
                     {
                         type: 'scatter',
-                        coordinateSystem: 'geo',
+                        coordinateSystem: 'amap',
                         data: this.cityHospitals,
                         itemStyle: {
                             color: '#4577ba',
@@ -117,7 +126,7 @@ export default {
                     },
                     {
                         type: 'scatter',
-                        coordinateSystem: 'geo',
+                        coordinateSystem: 'amap',
                         data: this.basicHospitals,
                         itemStyle: {
                             color: '#1dc254',
@@ -125,52 +134,31 @@ export default {
                         symbolSize: 6,
                     }
                 ],
-                // visualMap: {
-                //     show: true,
-                //     type: 'continuous',
-                //     min: 0,
-                //     max: 10000,
-                //     name: '抗毒血清库存数',
-                //     inRange: {
-                //         color: ['#f0f0f0', '#006edd'],
-                //         symbolSize: [100, 100]
-                //     },
-                //     seriesIndex: 2
-                // },
-                toolbox: {
-                    show: true,
-                    feature: {
-                        dataZoom: {
-                            show: true,
-                            title: '缩放'
-                        },
-                        restore: {
-                            show: true,
-                            title: '刷新'
-                        },
-                        saveAsImage: {
-                            show: true,
-                            title: '下载图片'
-                        }
-                    }
-                },
-                tooltip: {
-                    trigger: 'item',
-                    formatter: (params) => {
-                        let content = '<div>' +
-                            '<p>机构名称：' + params.data.adress.name + '</p>' +
-                            '<p>地址：' + params.data.adress.address + '</p>' +
-                            '<p>认证医生数：' + params.data.doctor_num + '</p>' +
-                            '<p>抗蛇毒血清计算库存数：' + params.data.antivenom_num + '</p>' +
-                            '<p>经纬度坐标' + params.data.value[0] + ',' + params.data.value[1] + '</p>' +
-                            '</div>'
-                        return content
-                    }
-                }
             }
 
-            if (!this.map) this.map = echarts.init(this.$refs.mapContainer)
-            this.map.setOption(option)
+            if (!this.echartsMap) this.echartsMap = echarts.init(this.$refs.mapContainer)
+            this.echartsMap.setOption(option)
+
+            // 获取 ECharts 高德地图组件
+            const amapComponent = this.echartsMap.getModel().getComponent('amap')
+
+            // 获取高德地图实例，使用高德地图自带的控件(需要在高德地图js API script标签手动引入)
+            const amap = amapComponent.getAMap()
+
+            // 添加控件
+            amap.addControl(new AMap.Scale())
+            amap.addControl(new AMap.ToolBar())
+            // 添加图层
+            var satelliteLayer = new AMap.TileLayer.Satellite()
+            var roadNetLayer = new AMap.TileLayer.RoadNet()
+            // amap.add([satelliteLayer, roadNetLayer]);
+            //  添加一个 Marker
+            amap.add(new AMap.Marker({
+                position: [115, 35]
+            }))
+
+            // 禁用 ECharts 图层交互，从而使高德地图图层可以点击交互
+            amapComponent.setEChartsLayerInteractive(false)
         },
 
         /**
@@ -186,15 +174,12 @@ export default {
 
                 this.newScatters = this.hospitals.filter(item => {
                     const now = new Date().getTime()
-                    console.log('%c [ now ]-189', 'font-size:13px; background:pink; color:#bf2c9f;', now)
                     const untilToday = new Date().setHours(23, 16, 0, 0),
                         startToday = new Date().setHours(0, 0, 0, 0)
-                        // console.log('%c [ startToday ]-191', 'font-size:13px; background:pink; color:#bf2c9f;', untilToday, startToday)
 
                     // return startToday <= item.adress.createTime && item.adress.createTime <= untilToday
-                    return item.adress.createTime + 3000 >= now 
+                    return item.adress.createTime + 3000 >= now
                 })
-
 
                 this.$store.dispatch('setData', this.hospitals)
 
@@ -211,7 +196,7 @@ export default {
 
                 this.initMap()
             }).catch(err => {
-                this.$toast('error')
+                console.error('%c [ err ]-260', 'font-size:13px; background:pink; color:#bf2c9f;', err)
             })
         },
         /**
@@ -223,6 +208,47 @@ export default {
             this.timer = setInterval(() => {
                 this.getHospitals()
             }, this.refreshTime)
+        },
+
+        /**
+         * 获取中国地图边界数据
+         */
+        initMapData() {
+            this.opts = {
+                subdistrict: 1,   //返回下一级行政区
+                showbiz: false  //最后一级返回街道信息
+            }
+
+            this.district = new AMap.DistrictSearch(this.opts)
+
+            this.district.search("中国", (status, result) => {
+                if (status == "complete") {
+                    console.log('%c [ result ]-242', 'font-size:13px; background:pink; color:#bf2c9f;', result)
+
+                    this.getData(result.districtList[0], "", 100000)
+                }
+            })
+        },
+
+        /**
+         * 处理数据
+         */
+        getData(data, level, adcode) {
+            const bounds = data.boundaries
+            if (bounds) {
+                for (var i = 0, l = bounds.length; i < l; i++) {
+                    var polygon = new AMap.Polygon({
+                        map: this.map,
+                        strokeWeight: 1,
+                        strokeColor: "#0091ea",
+                        fillColor: "#80d8ff",
+                        fillOpacity: 0.2,
+                        path: bounds[i],
+                    });
+                    this.polygons.push(polygon);
+                }
+                this.map.setFitView(); //地图自适应
+            }
         }
     }
 }

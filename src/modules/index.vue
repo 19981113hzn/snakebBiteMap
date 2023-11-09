@@ -55,11 +55,11 @@ export default {
 
 <style lang="less" scoped>
 .home-view {
+    position: relative;
     display: flex;
     flex-direction: row;
     width: 100%;
     height: 100%;
-    padding: 100px;
 }
 
 .map-container {
@@ -68,7 +68,12 @@ export default {
 }
 
 .statistics-container {
+    position: fixed;
+    z-index: 999;
+    left: 0;
+    bottom: 0;
     height: 100%;
     min-width: 300px;
+    padding-left: 100px;
 }
 </style>
