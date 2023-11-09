@@ -1,5 +1,4 @@
 import axios from "axios"
-import { showToast } from './toast'
 
 const mock_host = `http://${location.hostname}:3800`
 const host = process.env.VUE_APP_SERVE_URL

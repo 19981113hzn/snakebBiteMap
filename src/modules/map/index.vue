@@ -9,6 +9,7 @@ import * as echarts from 'echarts'
 import chinaGeoJSON from '../../assets/data/chinaMap.json'
 import api from '@/plugin/api'
 import "echarts-extension-amap"
+import SocketService from "@/plugin/websocket"
 
 const AMap = window.AMap || null
 
@@ -25,7 +26,9 @@ export default {
             newScatters: [],
             opts: {},
             district: [],
-
+            ws: null,
+            hospitalInfos: [],
+            statisticsInfo: null
         }
     },
     computed: {
@@ -39,14 +42,17 @@ export default {
                 return item.adress.createTime < now * 1000
             })
 
-
             return result
         }
     },
     mounted() {
-        this.getHospitals()
-        this.initMapData()
-        if (!this.timer) this.onTimeReresh()
+        // this.getHospitals()
+        // if (!this.timer) this.onTimeReresh()
+
+        this.getData()
+    },
+    destroyed() {
+        // this.ws.unSubscribe()
     },
     beforeDestroy() {
         clearInterval(this.timer)
@@ -56,18 +62,20 @@ export default {
          * 初始化地图
          */
         initMap() {
+
             echarts.registerMap('china', chinaGeoJSON)
-            
+            console.log('%c [ this.cityHospitals ]-125', 'font-size:13px; background:pink; color:#bf2c9f;', this.cityHospitals, typeof this.cityHospitals)
+
             let option = {
                 animation: true,
                 tooltip: {
                     trigger: 'item',
                     formatter: (params) => {
                         let content = '<div>' +
-                            '<p>机构名称：' + params.data.adress.name + '</p>' +
-                            '<p>地址：' + params.data.adress.address + '</p>' +
-                            '<p>认证医生数：' + params.data.doctor_num + '</p>' +
-                            '<p>抗蛇毒血清计算库存数：' + params.data.antivenom_num + '</p>' +
+                            '<p>机构名称：' + params.data.name + '</p>' +
+                            '<p>地址：' + params.data.address + '</p>' +
+                            // '<p>认证医生数：' + params.data.doctor_num + '</p>' +
+                            // '<p>抗蛇毒血清计算库存数：' + params.data.antivenom_num + '</p>' +
                             '<p>经纬度坐标' + params.data.value[0] + ',' + params.data.value[1] + '</p>' +
                             '</div>'
                         return content
@@ -82,14 +90,12 @@ export default {
                     mapStyle: 'amap://styles/fresh',
                     echartsLayerInteractive: true,
                     echartsLayerZIndex: 2019,
-                    labelzIndex: -100,
+                    labelzIndex: 100,
                     zoomstart: function () {
                         amap.setOptions({
                             labelzIndex: 100 // 开始缩放时显示文字标注
                         })
                     },
-                    // label: 100,
-                    // showLabel: false,
                 },
                 series: [
                     {
@@ -97,7 +103,6 @@ export default {
                         coordinateSystem: 'amap',
                         data: this.newScatters,
                         itemStyle: {
-                            // color: '#4577ba',
                             color: function (params) {
                                 const type = params.data.type
                                 return type == 1 ? '#4577ba' : '#1dc254'
@@ -137,6 +142,8 @@ export default {
             }
 
             if (!this.echartsMap) this.echartsMap = echarts.init(this.$refs.mapContainer)
+            console.log('%c [ option ]-146', 'font-size:13px; background:pink; color:#bf2c9f;', option)
+
             this.echartsMap.setOption(option)
 
             // 获取 ECharts 高德地图组件
@@ -148,17 +155,14 @@ export default {
             // 添加控件
             amap.addControl(new AMap.Scale())
             amap.addControl(new AMap.ToolBar())
-            // 添加图层
-            var satelliteLayer = new AMap.TileLayer.Satellite()
-            var roadNetLayer = new AMap.TileLayer.RoadNet()
-            // amap.add([satelliteLayer, roadNetLayer]);
+
             //  添加一个 Marker
             amap.add(new AMap.Marker({
                 position: [115, 35]
             }))
 
             // 禁用 ECharts 图层交互，从而使高德地图图层可以点击交互
-            amapComponent.setEChartsLayerInteractive(false)
+            // amapComponent.setEChartsLayerInteractive(false)
         },
 
         /**
@@ -199,6 +203,7 @@ export default {
                 console.error('%c [ err ]-260', 'font-size:13px; background:pink; color:#bf2c9f;', err)
             })
         },
+
         /**
          * 定时器
          */
@@ -211,44 +216,56 @@ export default {
         },
 
         /**
-         * 获取中国地图边界数据
+         * websocket
          */
-        initMapData() {
-            this.opts = {
-                subdistrict: 1,   //返回下一级行政区
-                showbiz: false  //最后一级返回街道信息
-            }
+        getData() {
+            this.ws = SocketService.Instance
 
-            this.district = new AMap.DistrictSearch(this.opts)
+            this.ws.sendMessage(
+                {},
+                (data) => {
+                    console.log('%c [ data ]-226', 'font-size:13px; background:pink; color:#bf2c9f;', data)
+                    this.hospitalInfos = data.hospitalInfos
+                    this.statisticsInfo = data.statisticsInfo
 
-            this.district.search("中国", (status, result) => {
-                if (status == "complete") {
-                    console.log('%c [ result ]-242', 'font-size:13px; background:pink; color:#bf2c9f;', result)
+                    this.hospitalInfos.forEach((item, index) => {
+                        if (!item.latitude || !item.longitude) {
+                            console.log(66666, item.latitude, item.longitude, index);
+                            item.longitude = '104.949528'
+                            item.latitude = '33.372832'
+                        }
+                        item.longitude = Number(item.longitude)
+                        item.latitude = Number(item.latitude)
+                        item.value = [Number(item.longitude), Number(item.latitude)]
+                    })
 
-                    this.getData(result.districtList[0], "", 100000)
+                    this.$store.dispatch('setData', data)
+
+                    this.newScatters = this.hospitalInfos.filter(item => {
+                        return item.flickerFlag
+                    })
+
+                    // this.$store.dispatch('setData', this.hospitals)
+
+                    this.cityHospitals = this.hospitalInfos.filter((item, index) => {
+                        // return item.id % 3 !== 0
+                        // return (index <= 100 && index !== 140)
+                        return index === 105
+                    })
+                    this.$store.dispatch('setCityData', this.cityHospitals)
+
+                    this.basicHospitals = this.hospitalInfos.filter((item, index) => {
+                        // return item.id % 3 === 0
+                        // return (100 < index && index <= 360 && index !== 140)
+                        return index === 101
+                    })
+                    this.$store.dispatch('setBasicData', this.basicHospitals)
+
+                    this.initMap()
+
                 }
-            })
-        },
+            )
 
-        /**
-         * 处理数据
-         */
-        getData(data, level, adcode) {
-            const bounds = data.boundaries
-            if (bounds) {
-                for (var i = 0, l = bounds.length; i < l; i++) {
-                    var polygon = new AMap.Polygon({
-                        map: this.map,
-                        strokeWeight: 1,
-                        strokeColor: "#0091ea",
-                        fillColor: "#80d8ff",
-                        fillOpacity: 0.2,
-                        path: bounds[i],
-                    });
-                    this.polygons.push(polygon);
-                }
-                this.map.setFitView(); //地图自适应
-            }
         }
     }
 }

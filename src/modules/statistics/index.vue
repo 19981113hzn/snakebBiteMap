@@ -70,23 +70,23 @@ export default {
     computed: {
         snakeCount() {
             if (!this.$store.state.data) return 0
-            return this.$store.state.data[0].snakebite_num
+            return this.$store.state.data.statisticsInfo.blzs
         },
         serumCount() {
             if (!this.snakeCount) return 0
-            return Math.floor(this.snakeCount * 0.85)
+            return this.$store.state.data.statisticsInfo.blxqzs
         },
         urbanCount() {
             if (!this.$store.state.cityData) return 0
-            return this.$store.state.cityData.length
+            return this.$store.state.data.statisticsInfo.cqjzd
         },
         ruralCount() {
             if (!this.$store.state.basicData) return 0
-            return this.$store.state.basicData.length
+            return this.$store.state.data.statisticsInfo.jcjzd
         },
         doctorCount() {
             if (!this.$store.state.data) return 0
-            return this.$store.state.data[0].doctor_num
+            return this.$store.state.data.statisticsInfo.rzys
         }
     },
     methods: {
