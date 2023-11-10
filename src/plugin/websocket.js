@@ -1,3 +1,5 @@
+import Rwebsocket from 'reconnecting-websocket'
+
 export default class SocketService {
     constructor(againConnect = true, url) {
         this.url = url
@@ -29,8 +31,9 @@ export default class SocketService {
             return console.log("您的浏览器不支持WebSocket")
         }
 
-        this.ws = new WebSocket(this.url)
-
+        // 自动重连
+        this.ws = new Rwebsocket(this.url, null, {debug: false, reconnectInterval: 3000})
+        
         //连接
         this.ws.onopen = () => {
             this.connected = true
@@ -38,7 +41,7 @@ export default class SocketService {
             this.connectRetryCount = 0
         }
 
-        //连接关闭了，设置标识值为false，
+        //连接关闭了，设置标识值为false
         this.ws.onclose = () => {
             this.connected = false
             this.connectRetryCount++
@@ -76,6 +79,7 @@ export default class SocketService {
     //关闭连接 停止发送消息
     unSubscribe() {
         this.ws.close()
+        this.ws = null
     }
 
     // 发送数据的方法
