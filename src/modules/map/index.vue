@@ -59,7 +59,7 @@ export default {
                 amap: {
                     viewMode: '3D',
                     center: [98.39, 33.9],
-                    zoom: 4,
+                    zoom: 4.8,
                     resizeEnable: true,
                     renderOnMoving: true,
                     animationDurationUpdate: 0,
@@ -157,6 +157,7 @@ export default {
             this.hospitalInfos = data.hospitalInfos
             this.statisticsInfo = data.statisticsInfo
 
+            // 过滤无效经纬度
             this.hospitalInfos = this.hospitalInfos.filter(item => {
                 return !isNaN(item.latitude) && !isNaN(item.longitude)
             })
@@ -172,16 +173,13 @@ export default {
             })
 
             this.cityHospitals = this.hospitalInfos.filter((item, index) => {
-                // return index == 1
-                return item.id % 3 !== 0
+                return item.region === 1
             })
 
             this.$store.dispatch('setCityData', this.cityHospitals)
 
             this.basicHospitals = this.hospitalInfos.filter((item, index) => {
-                // return index == 2
-
-                return item.id % 3 === 0
+                return item.region === 0
             })
 
             this.$store.dispatch('setBasicData', this.basicHospitals)
