@@ -2,20 +2,11 @@ const path = require('path')
 
 module.exports = {
     publicPath: '/',
-    outputDir: 'dist',
+    outputDir: process.env.outputDir,
     assetsDir: 'static',
     productionSourceMap: false,
     devServer: {
         port: 8080,
-        proxy: {
-            '/api': {
-                target: 'http://localhost:3000',
-                changeOrigin: true,
-                pathRewrite: {
-                    '^/api': ''
-                }
-            }
-        }
     },
     configureWebpack: {
         resolve: {
