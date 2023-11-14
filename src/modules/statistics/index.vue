@@ -2,39 +2,39 @@
     <div class="statistics-view">
         <div class="statistics-info">
             <h2 class="title">赛伦100蛇伤急救网络</h2>
-            <div class="data-group">
+            <div class="data-group" v-if="statisticsInfo">
                 <div class="data-item">
                     <div class="data-label">蛇伤数</div>
                     <div class="data-value"><span class="value-number">
-                            <CountUp :endVal="snakeCount" />
+                            <CountUp :endVal="statisticsInfo.blzs || 0" />
                         </span><span class="data-label">例</span>
                     </div>
                 </div>
                 <div class="data-item">
                     <div class="data-label">其中使用抗蛇毒血清</div>
                     <div class="data-value"><span class="value-number">
-                            <CountUp :endVal="serumCount" />
+                            <CountUp :endVal="statisticsInfo.blxqzs || 0" />
                         </span><span class="data-label">例</span>
                     </div>
                 </div>
                 <div class="data-item">
                     <div class="data-label">城区救治点</div>
                     <div class="data-value"><span class="value-number">
-                            <CountUp :endVal="urbanCount" />
+                            <CountUp :endVal="statisticsInfo.cqjzd || 0" />
                         </span><span class="data-label">家</span>
                     </div>
                 </div>
                 <div class="data-item">
                     <div class="data-label">基层救治点</div>
                     <div class="data-value"><span class="value-number">
-                            <CountUp :endVal="ruralCount" />
+                            <CountUp :endVal="statisticsInfo.jcjzd || 0" />
                         </span><span class="data-label">家</span>
                     </div>
                 </div>
                 <div class="data-item">
                     <div class="data-label">认证医生</div>
                     <div class="data-value"><span class="value-number">
-                            <CountUp :endVal="doctorCount" />
+                            <CountUp :endVal="statisticsInfo.rzys || 0" />
                         </span><span class="data-label">位</span>
                     </div>
                 </div>
@@ -67,25 +67,9 @@ export default {
         }
     },
     computed: {
-        snakeCount() {
-            if (!this.$store.state.data) return 0
-            return this.$store.state.data.statisticsInfo.blzs
-        },
-        serumCount() {
-            if (!this.snakeCount) return 0
-            return this.$store.state.data.statisticsInfo.blxqzs
-        },
-        urbanCount() {
-            if (!this.$store.state.cityData) return 0
-            return this.$store.state.data.statisticsInfo.cqjzd
-        },
-        ruralCount() {
-            if (!this.$store.state.basicData) return 0
-            return this.$store.state.data.statisticsInfo.jcjzd
-        },
-        doctorCount() {
-            if (!this.$store.state.data) return 0
-            return this.$store.state.data.statisticsInfo.rzys
+        statisticsInfo() {
+            if (!this.$store.state.data || !this.$store.state.data.statisticsInfo) return null
+            return this.$store.state.data.statisticsInfo
         }
     },
     methods: {
@@ -103,7 +87,6 @@ export default {
         }
     },
     mounted() {
-        // TODO: 获取统计数据的代码
     }
 }
 </script>

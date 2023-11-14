@@ -11,6 +11,7 @@ import SocketService from "@/plugin/websocket"
 
 const AMap = window.AMap || null
 const screenWidth = window.innerWidth
+
 let initZoom = 4.2,
     initCitySymbolSize = 6,
     initBasicSymbolSize = 4
@@ -24,6 +25,8 @@ if (screenWidth < 768) {
     initCitySymbolSize = 4
     initBasicSymbolSize = 2
     initZoom = 4
+} else if (screenWidth > 1920) {
+    initZoom = 4.8
 }
 
 export default {
@@ -37,7 +40,6 @@ export default {
             newScatters: [],
             ws: null,
             hospitalInfos: [],
-            statisticsInfo: null,
             originalCenter: [98.39, 33.9],
             currentCenter: [98.39, 33.9],
             originalZoom: initZoom,
@@ -83,11 +85,10 @@ export default {
         },
 
         /**
-         * websocket
+         * 连接websocket
          */
         getData() {
             this.ws = SocketService.Instance
-
             this.ws.sendMessage(
                 {},
                 this.handledata
@@ -99,9 +100,79 @@ export default {
          * @param {object} data -- websocket 服务器返回的数据
          */
         handledata(data) {
-            this.hospitalInfos = data.hospitalInfos
-            this.statisticsInfo = data.statisticsInfo
+            // 增量数据
+            if (data.dataType === 1 && this.$store.state.data && (data.statisticsInfo || data.hospitalInfos)) {
+                let newData = this.$store.state.data || {},
+                    IsStatisticsInfoEqual = false
 
+                // 如果有统计信息返回，判断统计信息是否有更新
+                if (data.statisticsInfo) {
+                    // 判断statisticsInfo是否相同
+                    IsStatisticsInfoEqual = JSON.stringify(data.statisticsInfo) === JSON.stringify(newData.statisticsInfo)
+                    // 如果统计信息相同并且没有返回医院数据 则直接返回
+                    if (IsStatisticsInfoEqual && !data.hospitalInfos) return
+                    newData.statisticsInfo = data.statisticsInfo
+                }
+
+                // 如果统计信息更新了，并且没有医院信息返回，则只刷新统计信息
+                if (!data.hospitalInfos && !IsStatisticsInfoEqual) {
+                    this.$store.dispatch('setData', newData)
+                    return
+                }
+
+                // 过滤掉相同的医院，获取新的hospitalInfos
+                const newHospitals = data.hospitalInfos.filter((hospital) => {
+                    return !this.hospitalInfos.some((info) => {
+                        return info.latitude === hospital.latitude && info.longitude === hospital.longitude
+                    })
+                })
+
+                // 相同的医院 可能有不同的数据
+                const sameHospitals = data.hospitalInfos.filter((hospital) => {
+                    return this.hospitalInfos.some((info) => {
+                        return info.latitude === hospital.latitude && info.longitude === hospital.longitude
+                    })
+                })
+
+                // 相同的医院
+                if (sameHospitals && sameHospitals.length !== 0) {
+                    // 将相同医院的不同数据更新
+                    this.hospitalInfos.forEach((item, index) => {
+                        sameHospitals.forEach((itm, idx) => {
+                            if (item.latitude === itm.latitude && item.longitude === itm.longitude) {
+                                this.hospitalInfos[index] = sameHospitals[idx]
+                            }
+                        })
+                    })
+                }
+
+                // 如果有新的医院 将其添加 
+                if (newHospitals && newHospitals.length !== 0) {
+                    newHospitals.forEach((newInfo) => {
+                        this.hospitalInfos.push(newInfo)
+                    })
+                }
+
+                // 刷新数据
+                newData.hospitalInfos = this.hospitalInfos
+                this.$store.dispatch('setData', newData)
+
+                this.classifyData()
+
+                return
+            }
+
+            // 全量数据，完全替换
+            this.$store.dispatch('setData', data)
+
+            this.hospitalInfos = data.hospitalInfos
+            this.classifyData()
+        },
+
+        /**
+         * 处理数据分类
+         */
+        classifyData() {
             // 过滤无效经纬度
             this.hospitalInfos = this.hospitalInfos.filter(item => {
                 return !isNaN(item.latitude) && !isNaN(item.longitude)
@@ -111,7 +182,6 @@ export default {
                 item.value = [Number(item.longitude), Number(item.latitude)]
             })
 
-            this.$store.dispatch('setData', data)
 
             this.newScatters = this.hospitalInfos.filter(item => {
                 return item.flickerFlag
@@ -121,13 +191,9 @@ export default {
                 return item.region === 1
             })
 
-            this.$store.dispatch('setCityData', this.cityHospitals)
-
             this.basicHospitals = this.hospitalInfos.filter((item, index) => {
                 return item.region === 0
             })
-
-            this.$store.dispatch('setBasicData', this.basicHospitals)
 
             this.init()
         },
@@ -155,13 +221,12 @@ export default {
 
                 if (this.isMarkerShown) {
                     this.isMarkerShown = false
-                    this.hideMarkers()
+                    this.removeMarker()
                 }
             } else {
                 if (!this.isMarkerShown) {
                     this.isMarkerShown = true
                     this.addMarkers()
-                    this.showMarkers()
                 }
 
                 if (this.isScatterShown) {
@@ -196,16 +261,22 @@ export default {
         },
 
         /**
-         * marker
+         * 添加marker
          */
         addMarkers() {
+            let icon = null
             const markers = []
-            this.hospitalInfos.forEach((item, index) => {
-                const icon = new AMap.Icon({
-                    size: new AMap.Size(36, 36),
+
+            const setIconSize = (size) => {
+                icon = new AMap.Icon({
+                    size: new AMap.Size(size, size),
                     image: 'https://bn.devfp.ps.netease.com/file/65523f2528dafdbe7170e872RaA8XQXL02',
-                    imageSize: new AMap.Size(36, 36)
+                    imageSize: new AMap.Size(size, size)
                 })
+            }
+
+            this.hospitalInfos.forEach((item, index) => {
+                setIconSize(36)
 
                 const marker = new AMap.Marker({
                     position: item.value,
@@ -215,18 +286,29 @@ export default {
                     map: this.amap
                 })
                 marker.on('click', () => {
-                    const icon = new AMap.Icon({
-                        size: new AMap.Size(48, 48),
-                        image: 'https://bn.devfp.ps.netease.com/file/65523f2528dafdbe7170e872RaA8XQXL02',
-                        imageSize: new AMap.Size(48, 48)
-                    })
+                    setIconSize(48)
                     marker.setIcon(icon)
                     this.showTooltip(item)
+
+                    this.infoWindow.on('close', () => {
+                        setIconSize(36)
+                        marker.setIcon(icon)
+                    })
                 })
 
                 markers.push(marker)
             })
             this.markers = markers
+        },
+
+        /**
+         * 移除marker
+         */
+        removeMarker() {
+            this.markers.forEach(marker => {
+                marker.setMap(null)
+            })
+            this.markers = []
         },
 
         /**
@@ -253,26 +335,11 @@ export default {
                 zIndex: 102,
                 position: item.value
             })
+
             this.infoWindow = infoWindow
+
+
             infoWindow.open(this.amap, item.value)
-        },
-
-        /**
-         * 隐藏标记点
-         */
-        hideMarkers() {
-            this.markers.forEach(marker => {
-                marker.hide()
-            })
-        },
-
-        /**
-         * 缩放时展示标记点
-         */
-        showMarkers() {
-            this.markers.forEach(marker => {
-                marker.show()
-            })
         },
 
         /**

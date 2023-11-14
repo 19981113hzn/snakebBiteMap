@@ -3,12 +3,12 @@ import Rwebsocket from 'reconnecting-websocket'
 export default class SocketService {
     constructor(againConnect = true, url) {
         this.url = url
-        this.againConnect = againConnect
+        this.againConnect = true
     }
     instance = null //页面中使用的SocketService实例
     ws = null // 和服务端连接的socket对象
     url = 'ws://47.102.20.181:22120/ws/case' //地址
-    againConnect //断开是否重连
+    againConnect = true //断开是否重连
     connected = false // 标识是否连接成功
     sendRetryCount = 0 // 记录重试的次数
     connectRetryCount = 0 // 重新连接尝试的次数
@@ -32,7 +32,7 @@ export default class SocketService {
         }
 
         // 自动重连
-        this.ws = new Rwebsocket(this.url, null, {debug: false, reconnectInterval: 3000})
+        this.ws = new Rwebsocket(this.url, null, {debug: false, reconnectInterval: 4000})
         
         //连接
         this.ws.onopen = () => {
@@ -50,7 +50,7 @@ export default class SocketService {
             if (this.againConnect) {
                 setTimeout(() => {
                     this.connect()
-                }, 500 * this.connectRetryCount)
+                }, 10000)
             } else {
                 sessionStorage.clear()
                 localStorage.clear()
