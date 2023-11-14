@@ -10,23 +10,58 @@ import "echarts-extension-amap"
 import SocketService from "@/plugin/websocket"
 
 const AMap = window.AMap || null
+const screenWidth = window.innerWidth
+let initZoom = 4.2,
+    initCitySymbolSize = 6,
+    initBasicSymbolSize = 4
+
+if (screenWidth < 768) {
+
+    initZoom = 3.5
+} else if (screenWidth < 992) {
+    initZoom = 4
+} else if (screenWidth < 1200) {
+    initCitySymbolSize = 4
+    initBasicSymbolSize = 2
+    initZoom = 4
+}
 
 export default {
     name: 'MapView',
     data() {
         return {
             echartsMap: null,
+            amap: null,
             cityHospitals: [],
             basicHospitals: null,
             newScatters: [],
             ws: null,
             hospitalInfos: [],
             statisticsInfo: null,
-            currentZoom: 4.8,
+            originalCenter: [98.39, 33.9],
+            currentCenter: [98.39, 33.9],
+            originalZoom: initZoom,
+            currentZoom: initZoom,
             option: null,
             markers: [], // 存储自定义图片的marker
             isScatterShown: true,
-            currentCenter: [98.39, 33.9],
+            isMarkerShown: false,
+            showBackToHome: true,
+            initAmapOption: {
+                viewMode: '3D',
+                center: [98.39, 33.9],
+                zoom: initZoom,
+                resizeEnable: true,
+                renderOnMoving: true,
+                animationDurationUpdate: 0,
+                mapStyle: 'amap://styles/fresh',
+                echartsLayerInteractive: true,
+                labelzIndex: 100,
+                roam: true
+            },
+            citySymbolSize: initCitySymbolSize,
+            basicSymbolSize: initBasicSymbolSize,
+            infoWindow: null,
         }
     },
     computed: {
@@ -43,8 +78,8 @@ export default {
          * 初始化
          */
         init() {
-            this.initOptions()
             this.initMap()
+            this.initAMap()
         },
 
         /**
@@ -101,55 +136,63 @@ export default {
          * 处理地图缩放
          */
         handleZoom() {
-            if (!this.echartsMap) return
+            if (!this.echartsMap || !this.amap) return
 
-            const amapComponent = this.echartsMap.getModel().getComponent('amap')
-            const amap = amapComponent.getAMap()
-            const center = amap.getCenter()
+            const center = this.amap.getCenter()
 
-            this.currentZoom = amap.getZoom()
-
+            this.currentZoom = this.amap.getZoom()
             this.currentCenter = [center.lng, center.lat]
 
-            // this.setOption()
-            console.log('%c [ this.currentZoom ]-212', 'font-size:13px; background:pink; color:#bf2c9f;', this.currentZoom)
+            this.citySymbolSize = 6 * (Math.pow(1.3, this.currentZoom - this.originalZoom))
+            this.basicSymbolSize = 4 * (Math.pow(1.3, this.currentZoom - this.originalZoom))
 
+            //marker 和 scatters 的显隐
             if (this.currentZoom <= 10) {
-                this.hideMarkers()
+                this.setOptions()
                 if (!this.isScatterShown) {
                     this.isScatterShown = true
-                    this.initOptions()
+                }
+
+                if (this.isMarkerShown) {
+                    this.isMarkerShown = false
+                    this.hideMarkers()
                 }
             } else {
-                this.showMarkers()
-                this.hideScatters()
-                this.isScatterShown = false
+                if (!this.isMarkerShown) {
+                    this.isMarkerShown = true
+                    this.addMarkers()
+                    this.showMarkers()
+                }
+
+                if (this.isScatterShown) {
+                    this.isScatterShown = false
+                    this.hideScatters()
+                }
+            }
+
+            if (this.currentZoom !== this.originalZoom) this.$parent.changeShowBackToHome(true)
+        },
+
+        /**
+         * handleMove 移动结束时
+         */
+        handleMove() {
+            const amapComponent = this.echartsMap.getModel().getComponent('amap')
+            const amap = amapComponent.getAMap()
+
+            const center = amap.getCenter()
+
+            if (center.lng !== this.originalCenter[0] || center.lat !== this.originalCenter[1]) {
+                this.$parent.changeShowBackToHome(true)
             }
         },
 
-        handleSymbolSize(zoom, value) {
-            // 获取 ECharts 高德地图组件
-            const amapComponent = this.echartsMap.getModel().getComponent('amap')
-
-            // 获取高德地图实例，使用高德地图自带的控件(需要在高德地图js API script标签手动引入)
-            const amap = amapComponent.getAMap()
-            // return this.currentZoom * 2
-            // this.echartsMap.setOption(this.option)
-        },
-
-        //set option
-        setOption() {
-            this.option.series.forEach((series) => {
-                series.symbolSize = (value, params) => {
-                    const type = params.data.region,
-                        originSize = type == 1 ? 6 : 4
-
-                    const size = originSize * Math.pow(2, this.currentZoom - 4.8)
-                    return size
-                }
-            })
-
-            this.echartsMap.setOption(this.option)
+        /**
+         * 处理散点大小
+         */
+        handleSymbolSize(value, params) {
+            const type = params.data.region
+            return type == 1 ? this.citySymbolSize : this.basicSymbolSize
         },
 
         /**
@@ -159,30 +202,45 @@ export default {
             const markers = []
             this.hospitalInfos.forEach((item, index) => {
                 const icon = new AMap.Icon({
-                    size: new AMap.Size(18, 18),
+                    size: new AMap.Size(36, 36),
                     image: 'https://bn.devfp.ps.netease.com/file/65523f2528dafdbe7170e872RaA8XQXL02',
-                    imageSize: new AMap.Size(18, 18)
+                    imageSize: new AMap.Size(36, 36)
                 })
 
                 const marker = new AMap.Marker({
                     position: item.value,
                     icon: icon,
                     offset: new AMap.Pixel(-12, -36),
-                    zIndex: 101,
-                    map: this.echartsMap.getModel().getComponent('amap').getAMap()
+                    zIndex: 100,
+                    map: this.amap
                 })
                 marker.on('click', () => {
+                    const icon = new AMap.Icon({
+                        size: new AMap.Size(48, 48),
+                        image: 'https://bn.devfp.ps.netease.com/file/65523f2528dafdbe7170e872RaA8XQXL02',
+                        imageSize: new AMap.Size(48, 48)
+                    })
+                    marker.setIcon(icon)
                     this.showTooltip(item)
                 })
+
                 markers.push(marker)
             })
             this.markers = markers
         },
 
+        /**
+         * 展示tooltip
+         */
         showTooltip(item) {
+            const authNum = item.authNum ? item.authNum : 0,
+                calculatelnventory = item.calculatelnventory ? item.calculatelnventory : 0
+
             const content = '<div class="info_window">' +
                 '<p class="info_name">机构名称：' + item.name + '</p>' +
-                '<p class="info_address">地址：' + item.address + '</p>' +
+                '<p class="info_address info_second">地址：' + item.address + '</p>' +
+                '<p class="info_docnum info_second">医生数量：' + authNum + '</p>' +
+                '<p class="info_lnventory info_second">抗蛇毒血清计算库存数：' + calculatelnventory + '</p>' +
                 '</div>'
 
             const infoWindow = new AMap.InfoWindow({
@@ -195,39 +253,34 @@ export default {
                 zIndex: 102,
                 position: item.value
             })
-
-            infoWindow.open(this.echartsMap.getModel().getComponent('amap').getAMap(), item.value)
-
+            this.infoWindow = infoWindow
+            infoWindow.open(this.amap, item.value)
         },
 
+        /**
+         * 隐藏标记点
+         */
         hideMarkers() {
-            console.log('%c [ hideMarkers ]-204', 'font-size:13px; background:pink; color:#bf2c9f;')
             this.markers.forEach(marker => {
                 marker.hide()
             })
         },
 
+        /**
+         * 缩放时展示标记点
+         */
         showMarkers() {
             this.markers.forEach(marker => {
                 marker.show()
             })
         },
 
+        /**
+         * 隐藏散点
+         */
         hideScatters() {
-            let option = {
-                amap: {
-                    viewMode: '3D',
-                    center: this.currentCenter,
-                    zoom: this.currentZoom,
-                    resizeEnable: true,
-                    renderOnMoving: true,
-                    animationDurationUpdate: 0,
-                    mapStyle: 'amap://styles/fresh',
-                    echartsLayerInteractive: true,
-                    labelzIndex: 100,
-                    roam: true,
-
-                },
+            // 设置散点数据为空
+            const emptyScatterData = {
                 series: [
                     {
                         type: 'effectScatter',
@@ -247,20 +300,14 @@ export default {
                 ],
             }
 
-            this.option = option
-
-            if (!this.echartsMap) this.echartsMap = echarts.init(this.$refs.mapContainer)
-
-            this.echartsMap.setOption(option)
-            
-            this.initMap()
+            this.setOptions(emptyScatterData)
         },
 
         /**
-         * 初始化Ehechart+地图配置
+         * 设置Ehechart+地图配置
          */
-        initOptions() {
-            let options = {
+        setOptions(data) {
+            const initOptions = {
                 amap: {
                     viewMode: '3D',
                     center: this.currentCenter,
@@ -285,10 +332,7 @@ export default {
                                 return type == 1 ? '#4577ba' : '#1dc254'
                             }
                         },
-                        symbolSize: function (value, params) {
-                            const type = params.data.region
-                            return type == 1 ? 6 : 4
-                        },
+                        symbolSize: this.handleSymbolSize,
                         rippleEffect: {
                             number: 5,
                             period: 3,
@@ -303,7 +347,7 @@ export default {
                         itemStyle: {
                             color: '#4577ba',
                         },
-                        symbolSize: 6,
+                        symbolSize: this.citySymbolSize,
                         large: true,
                         largeThreshold: 100,
                     },
@@ -314,7 +358,7 @@ export default {
                         itemStyle: {
                             color: '#1dc254',
                         },
-                        symbolSize: 4,
+                        symbolSize: this.basicSymbolSize,
                         large: true,
                         largeThreshold: 100
                     },
@@ -322,33 +366,57 @@ export default {
                 ],
             }
 
+            // 不传data  则使用可跟随视图的option
+            const option = Object.assign({}, initOptions, data)
+
+            this.option = option
+
             if (!this.echartsMap) this.echartsMap = echarts.init(this.$refs.mapContainer)
-            this.echartsMap.setOption(options)
+            this.echartsMap.setOption(option)
+            this.initAMap()
         },
 
         /**
          * 初始化高德地图
          */
-        initMap() {
+        initAMap() {
             // 获取 ECharts 高德地图组件
             const amapComponent = this.echartsMap.getModel().getComponent('amap')
 
             // 获取高德地图实例，使用高德地图自带的控件(需要在高德地图js API script标签手动引入)
             const amap = amapComponent.getAMap()
 
+            this.amap = amap
+
             // 添加控件  放大缩小
             amap.addControl(new AMap.Scale())
 
-            // 监听地图缩放
-            amap.on("zoomchange", this.handleZoom)
-            amap.on("zoomend", this.handleSymbolSize)
+            // 监听地图缩放 移动
+            amap.on("zoomend", this.handleZoom)
+            amap.on("moveend", this.handleMove)
 
             // 禁用 ECharts 图层交互，从而使高德地图图层可以点击交互
             amapComponent.setEChartsLayerInteractive(false)
 
-            this.addMarkers()
             // 初始化地图的时候 先隐藏marker
-            this.hideMarkers()
+            // this.hideMarkers()
+        },
+
+        /**
+         * 初始化整个地图 
+         */
+        initMap() {
+            const initOPtion = {
+                amap: this.initAmapOption
+            }
+            this.setOptions(initOPtion)
+        },
+
+        /**
+         * 回到初始状态
+         */
+        backToHome() {
+            this.amap.setZoomAndCenter(this.originalZoom, this.originalCenter)
         }
     }
 }
@@ -356,18 +424,4 @@ export default {
   
 <style scoped>
 @import url('./index.less');
-
-.map-view {}
-
-#container {
-    cursor: grabbing;
-}
-
-#container:hover {
-    cursor: grabbing;
-}
-
-#container .amap-marker-label {
-    cursor: pointer;
-}
 </style>
