@@ -72,13 +72,8 @@ export default {
             return this.$store.state.data.statisticsInfo
         },
         formatDate() {
-            const date = new Date()
-            const { year, month, day } = {
-                year: date.getFullYear(),
-                month: date.getMonth() + 1,
-                day: date.getDate()
-            }
-            const formattedDate = `${year}年${month.toString().padStart(2, '0')}月${day.toString().padStart(2, '0')}日`
+            if(!this.$store.state.data) return null
+            const formattedDate = this.$store.state.data.date 
             return formattedDate
         }
     },

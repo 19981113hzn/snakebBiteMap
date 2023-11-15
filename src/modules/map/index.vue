@@ -1,5 +1,5 @@
 <template>
-    <div class="map-view" ref="mapContainer" style="width: 100%;height: 100%;">
+    <div class="map-view" ref="mapContainer">
 
     </div>
 </template>
@@ -14,18 +14,25 @@ const screenWidth = window.innerWidth
 
 let initZoom = 4.2,
     initCitySymbolSize = 6,
-    initBasicSymbolSize = 4
-
+    initBasicSymbolSize = 4,
+    initCenter = [98.39, 33.9]
 if (screenWidth < 768) {
     initZoom = 3.5
 } else if (screenWidth < 992) {
-    initZoom = 4
+    initZoom = 3.8
 } else if (screenWidth < 1200) {
     initCitySymbolSize = 4
     initBasicSymbolSize = 2
     initZoom = 4
 } else if (screenWidth > 1920) {
     initZoom = 4.8
+}
+// 移动端暂不处理
+else if (screenWidth <= 375) {
+    initCitySymbolSize = 2
+    initBasicSymbolSize = 1
+    initCenter = [98.39, 33.9]
+    initZoom = 0.1
 }
 
 export default {
@@ -39,8 +46,8 @@ export default {
             newScatters: [],
             ws: null,
             hospitalInfos: [],
-            originalCenter: [98.39, 33.9],
-            currentCenter: [98.39, 33.9],
+            originalCenter: initCenter,
+            currentCenter: initCenter,
             originalZoom: initZoom,
             currentZoom: initZoom,
             option: null,
@@ -98,12 +105,51 @@ export default {
         },
 
         /**
+         * 模拟数据刷新时的情况
+         */
+        addData(data) {
+            data.hospitalInfos = [
+                {
+                    address: "辽宁省铁岭市铁岭县大甸子镇大甸子村张双线",
+                    authNum: 999,
+                    calculateInventory: 888,
+                    flickerFlag: 1,
+                    id: 1011961,
+                    latitude: "42.175534",
+                    longitude: "124.108466",
+                    name: "铁岭县大甸子镇中心卫生院",
+                    region: 0,
+                },
+                {
+                    address: "黑龙江黑龙江黑龙江黑龙江铁岭大方",
+                    authNum: 0,
+                    calculateInventory: 1005,
+                    flickerFlag: 1,
+                    id: 998866,
+                    latitude: "47.175534",
+                    longitude: "133.108466",
+                    name: "黑龙江铁岭大方镇中心卫生院",
+                    region: 0,
+                },
+            ]
+            data.statisticsInfo = {
+                blxqzs: 34178,
+                blzs: 23477,
+                cqjzd: 1965,
+                jcjzd: 1748,
+                rzys: 11641,
+            }
+        },
+
+        /**
          * 处理数据
          * @param {object} data -- websocket 服务器返回的数据
          */
         handledata(data) {
             // 增量数据
             if (data.dataType === 1 && this.$store.state.data && (data.statisticsInfo || data.hospitalInfos)) {
+                // this.addData(data)
+
                 let newData = this.$store.state.data || {},
                     IsStatisticsInfoEqual = false
 
@@ -125,14 +171,14 @@ export default {
                 // 过滤掉相同的医院，获取新的hospitalInfos
                 const newHospitals = data.hospitalInfos.filter((hospital) => {
                     return !this.hospitalInfos.some((info) => {
-                        return info.latitude === hospital.latitude && info.longitude === hospital.longitude
+                        return info.id === hospital.id
                     })
                 })
 
                 // 相同的医院 可能有不同的数据
                 const sameHospitals = data.hospitalInfos.filter((hospital) => {
                     return this.hospitalInfos.some((info) => {
-                        return info.latitude === hospital.latitude && info.longitude === hospital.longitude
+                        return info.id === hospital.id
                     })
                 })
 
@@ -141,7 +187,7 @@ export default {
                     // 将相同医院的不同数据更新
                     this.hospitalInfos.forEach((item, index) => {
                         sameHospitals.forEach((itm, idx) => {
-                            if (item.latitude === itm.latitude && item.longitude === itm.longitude) {
+                            if (item.id === itm.id) {
                                 this.hospitalInfos[index] = sameHospitals[idx]
                             }
                         })
@@ -169,6 +215,7 @@ export default {
 
             this.hospitalInfos = data.hospitalInfos
             this.classifyData()
+            this.init()
         },
 
         /**
@@ -196,8 +243,6 @@ export default {
             this.basicHospitals = this.hospitalInfos.filter((item, index) => {
                 return item.region === 0
             })
-
-            this.init()
         },
 
         /**
@@ -277,14 +322,13 @@ export default {
             const setIconSize = (size) => {
                 icon = new AMap.Icon({
                     size: new AMap.Size(size, size),
-                    image: 'https://bn.devfp.ps.netease.com/file/65523f2528dafdbe7170e872RaA8XQXL02',
+                    image: 'https://bn.devfp.ps.netease.com/file/65548f47671882f53acecab51Lw2U74x02',
                     imageSize: new AMap.Size(size, size)
                 })
             }
 
             this.hospitalInfos.forEach((item, index) => {
                 setIconSize(36)
-
                 const marker = new AMap.Marker({
                     position: item.value,
                     icon: icon,
@@ -323,13 +367,13 @@ export default {
          */
         showTooltip(item) {
             const authNum = item.authNum ? item.authNum : 0,
-                calculatelnventory = item.calculatelnventory ? item.calculatelnventory : 0
+                calculateInventory = item.calculateInventory ? item.calculateInventory : 0
 
             const content = '<div class="info_window">' +
                 '<p class="info_name">机构名称：' + item.name + '</p>' +
                 '<p class="info_address info_second">地址：' + item.address + '</p>' +
                 '<p class="info_docnum info_second">医生数量：' + authNum + '</p>' +
-                '<p class="info_lnventory info_second">抗蛇毒血清计算库存数：' + calculatelnventory + '</p>' +
+                '<p class="info_lnventory info_second">抗蛇毒血清计算库存数：' + calculateInventory + '</p>' +
                 '</div>'
 
             const infoWindow = new AMap.InfoWindow({
@@ -450,20 +494,20 @@ export default {
 
             // 添加echarts点位交互
             this.echartsMap.on('click', (params) => {
-                if (params.componentType === 'series' && params.seriesType === 'scatter') {
+                if (params.componentType === 'series' && (params.seriesType === 'scatter' || params.seriesType === 'effectScatter')) {
                     this.showTooltip(params.data)
                 }
             })
 
             this.echartsMap.on('mouseover', 'series', (params) => {
-                if (params.componentType === 'series' && params.seriesType === 'scatter') {
+                if (params.componentType === 'series' && (params.seriesType === 'scatter' || params.seriesType === 'effectScatter')) {
                     const canvas = document.getElementsByTagName('canvas')[1]
                     canvas.style.cursor = 'pointer'
                 }
             })
 
             this.echartsMap.on('mouseout', 'series', (params) => {
-                if (params.componentType === 'series' && params.seriesType === 'scatter') {
+                if (params.componentType === 'series' && (params.seriesType === 'scatter' || params.seriesType === 'effectScatter')) {
                     const canvas = document.getElementsByTagName('canvas')[1]
                     canvas.style.cursor = 'grabbing'
                 }
