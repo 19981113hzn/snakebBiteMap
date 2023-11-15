@@ -17,7 +17,6 @@ let initZoom = 4.2,
     initBasicSymbolSize = 4
 
 if (screenWidth < 768) {
-
     initZoom = 3.5
 } else if (screenWidth < 992) {
     initZoom = 4
@@ -71,6 +70,8 @@ export default {
     mounted() {
         this.getData()
     },
+    destroyed() {
+    },
     beforeDestroy() {
         // 销毁webscoket实例
         this.ws.unSubscribe()
@@ -89,6 +90,7 @@ export default {
          */
         getData() {
             this.ws = SocketService.Instance
+            console.log('主动连接websocket发送消息');
             this.ws.sendMessage(
                 {},
                 this.handledata
@@ -224,6 +226,11 @@ export default {
                     this.removeMarker()
                 }
             } else {
+                const amapComponent = this.echartsMap.getModel().getComponent('amap')
+                const canvas = document.getElementsByTagName('canvas')[1]
+                canvas.style.cursor = 'pointer'
+                amapComponent.setEChartsLayerInteractive(false)
+
                 if (!this.isMarkerShown) {
                     this.isMarkerShown = true
                     this.addMarkers()
@@ -281,7 +288,7 @@ export default {
                 const marker = new AMap.Marker({
                     position: item.value,
                     icon: icon,
-                    offset: new AMap.Pixel(-12, -36),
+                    // offset: new AMap.Pixel(-12, -36),
                     zIndex: 100,
                     map: this.amap
                 })
@@ -417,6 +424,7 @@ export default {
                         symbolSize: this.citySymbolSize,
                         large: true,
                         largeThreshold: 100,
+
                     },
                     {
                         type: 'scatter',
@@ -439,6 +447,28 @@ export default {
             this.option = option
 
             if (!this.echartsMap) this.echartsMap = echarts.init(this.$refs.mapContainer)
+
+            // 添加echarts点位交互
+            this.echartsMap.on('click', (params) => {
+                if (params.componentType === 'series' && params.seriesType === 'scatter') {
+                    this.showTooltip(params.data)
+                }
+            })
+
+            this.echartsMap.on('mouseover', 'series', (params) => {
+                if (params.componentType === 'series' && params.seriesType === 'scatter') {
+                    const canvas = document.getElementsByTagName('canvas')[1]
+                    canvas.style.cursor = 'pointer'
+                }
+            })
+
+            this.echartsMap.on('mouseout', 'series', (params) => {
+                if (params.componentType === 'series' && params.seriesType === 'scatter') {
+                    const canvas = document.getElementsByTagName('canvas')[1]
+                    canvas.style.cursor = 'grabbing'
+                }
+            })
+
             this.echartsMap.setOption(option)
             this.initAMap()
         },
@@ -463,7 +493,7 @@ export default {
             amap.on("moveend", this.handleMove)
 
             // 禁用 ECharts 图层交互，从而使高德地图图层可以点击交互
-            amapComponent.setEChartsLayerInteractive(false)
+            // amapComponent.setEChartsLayerInteractive(false)
 
             // 初始化地图的时候 先隐藏marker
             // this.hideMarkers()

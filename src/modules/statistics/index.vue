@@ -43,7 +43,7 @@
             <div class="tips">
                 <div class="tip tip-city">城区救治点</div>
                 <div class=" tip tip-basic">基层救治点</div>
-                <div class="tip-note">注：数据截止至今日</div>
+                <div class="tip-note">注：数据截止至{{ formatDate }}</div>
             </div>
         </div>
 
@@ -70,6 +70,16 @@ export default {
         statisticsInfo() {
             if (!this.$store.state.data || !this.$store.state.data.statisticsInfo) return null
             return this.$store.state.data.statisticsInfo
+        },
+        formatDate() {
+            const date = new Date()
+            const { year, month, day } = {
+                year: date.getFullYear(),
+                month: date.getMonth() + 1,
+                day: date.getDate()
+            }
+            const formattedDate = `${year}年${month.toString().padStart(2, '0')}月${day.toString().padStart(2, '0')}日`
+            return formattedDate
         }
     },
     methods: {
@@ -79,7 +89,8 @@ export default {
         },
         isShowBackToHome(show) {
             this.showBackToHome = show
-        }
+        },
+
     },
     filters: {
         formatNumber(value) {
