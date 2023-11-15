@@ -89,7 +89,6 @@ export default {
          */
         init() {
             this.initMap()
-            this.initAMap()
         },
 
         /**
@@ -150,20 +149,16 @@ export default {
             if (data.dataType === 1 && this.$store.state.data && (data.statisticsInfo || data.hospitalInfos)) {
                 // this.addData(data)
 
-                let newData = this.$store.state.data || {},
-                    IsStatisticsInfoEqual = false
+                let newData = this.$store.state.data || {}
 
-                // 如果有统计信息返回，判断统计信息是否有更新
+                // 如果有信息返回，刷新数据
                 if (data.statisticsInfo) {
-                    // 判断statisticsInfo是否相同
-                    IsStatisticsInfoEqual = JSON.stringify(data.statisticsInfo) === JSON.stringify(newData.statisticsInfo)
-                    // 如果统计信息相同并且没有返回医院数据 则直接返回
-                    if (IsStatisticsInfoEqual && !data.hospitalInfos) return
                     newData.statisticsInfo = data.statisticsInfo
+                    newData.date = data.date
                 }
 
-                // 如果统计信息更新了，并且没有医院信息返回，则只刷新统计信息
-                if (!data.hospitalInfos && !IsStatisticsInfoEqual) {
+                // 没有医院信息返回，则只刷新统计信息
+                if (!data.hospitalInfos) {
                     this.$store.dispatch('setData', newData)
                     return
                 }
@@ -231,7 +226,6 @@ export default {
                 item.value = [Number(item.longitude), Number(item.latitude)]
             })
 
-
             this.newScatters = this.hospitalInfos.filter(item => {
                 return item.flickerFlag
             })
@@ -294,10 +288,9 @@ export default {
          * handleMove 移动结束时
          */
         handleMove() {
-            const amapComponent = this.echartsMap.getModel().getComponent('amap')
-            const amap = amapComponent.getAMap()
-
-            const center = amap.getCenter()
+            const amapComponent = this.echartsMap.getModel().getComponent('amap'),
+                amap = amapComponent.getAMap(),
+                center = amap.getCenter()
 
             if (center.lng !== this.originalCenter[0] || center.lat !== this.originalCenter[1]) {
                 this.$parent.changeShowBackToHome(true)
@@ -389,7 +382,6 @@ export default {
 
             this.infoWindow = infoWindow
 
-
             infoWindow.open(this.amap, item.value)
         },
 
@@ -452,10 +444,10 @@ export default {
                         },
                         symbolSize: this.handleSymbolSize,
                         rippleEffect: {
-                            number: 5,
-                            period: 3,
-                            scale: 6.5,
-                            brushType: 'stroke'
+                            number: 3,
+                            period: 2,
+                            scale: 6,
+                            brushType: 'fill'
                         }
                     },
                     {
@@ -492,29 +484,43 @@ export default {
 
             if (!this.echartsMap) this.echartsMap = echarts.init(this.$refs.mapContainer)
 
+            this.addEchartsEvents()
+
+            // 防止上个渲染未完成进行下一个渲染报错
+            // setTimeout(() => {
+            this.echartsMap.setOption(option)
+            this.initAMap()
+            // }, 100)
+        },
+
+        /**
+         * 添加echarts事件监听
+         */
+        addEchartsEvents() {
+            const canvas = document.getElementsByTagName('canvas')[1]
+            if (!canvas) return
+
+            const isScatter = (params) => {
+                return params.componentType === 'series' && (params.seriesType === 'scatter' || params.seriesType === 'effectScatter')
+            }
             // 添加echarts点位交互
             this.echartsMap.on('click', (params) => {
-                if (params.componentType === 'series' && (params.seriesType === 'scatter' || params.seriesType === 'effectScatter')) {
+                if (isScatter) {
                     this.showTooltip(params.data)
                 }
             })
 
             this.echartsMap.on('mouseover', 'series', (params) => {
-                if (params.componentType === 'series' && (params.seriesType === 'scatter' || params.seriesType === 'effectScatter')) {
-                    const canvas = document.getElementsByTagName('canvas')[1]
+                if (isScatter) {
                     canvas.style.cursor = 'pointer'
                 }
             })
 
             this.echartsMap.on('mouseout', 'series', (params) => {
-                if (params.componentType === 'series' && (params.seriesType === 'scatter' || params.seriesType === 'effectScatter')) {
-                    const canvas = document.getElementsByTagName('canvas')[1]
+                if (isScatter) {
                     canvas.style.cursor = 'grabbing'
                 }
             })
-
-            this.echartsMap.setOption(option)
-            this.initAMap()
         },
 
         /**
@@ -538,9 +544,6 @@ export default {
 
             // 禁用 ECharts 图层交互，从而使高德地图图层可以点击交互
             // amapComponent.setEChartsLayerInteractive(false)
-
-            // 初始化地图的时候 先隐藏marker
-            // this.hideMarkers()
         },
 
         /**
