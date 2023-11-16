@@ -8,6 +8,7 @@
 import * as echarts from 'echarts'
 import "echarts-extension-amap"
 import SocketService from "@/plugin/websocket"
+import LabelsData from '@/assets/data/provinces'
 
 const AMap = window.AMap || null
 const screenWidth = window.innerWidth
@@ -61,15 +62,23 @@ export default {
                 zoom: initZoom,
                 resizeEnable: true,
                 renderOnMoving: true,
-                animationDurationUpdate: 0,
+                // animationDurationUpdate: 0,
                 mapStyle: 'amap://styles/fresh',
-                echartsLayerInteractive: true,
-                labelzIndex: 100,
-                roam: true
+                features: ['bg', 'road', 'building', 'point'],
+                zooms: [initZoom, 18],
+                // showLabel: false,
+                // echartsLayerInteractive: true,
+                // labelzIndex: 100,
+
             },
             citySymbolSize: initCitySymbolSize,
             basicSymbolSize: initBasicSymbolSize,
             infoWindow: null,
+            isInit: false,
+            lastZoomTime: null,
+            lastZoom: null,
+            layerProvince: {},
+            showProvince: true,
         }
     },
     computed: {
@@ -88,6 +97,7 @@ export default {
          * 初始化
          */
         init() {
+            this.isInit = true
             this.initMap()
         },
 
@@ -210,7 +220,7 @@ export default {
 
             this.hospitalInfos = data.hospitalInfos
             this.classifyData()
-            this.init()
+            if (!this.isInit) this.init()
         },
 
         /**
@@ -253,6 +263,16 @@ export default {
             this.citySymbolSize = 6 * (Math.pow(1.3, this.currentZoom - this.originalZoom))
             this.basicSymbolSize = 4 * (Math.pow(1.3, this.currentZoom - this.originalZoom))
 
+            // 添加移除省份标注
+            if (this.currentZoom >= 5 && this.showProvince) {
+                this.showProvince = false
+                // 移除标注层
+                this.amap.remove(this.layerProvince)
+            } else if(this.currentZoom < 5 && !this.showProvince) {
+                this.showProvince = true
+                this.amap.add(this.layerProvince)
+            }
+
             //marker 和 scatters 的显隐
             if (this.currentZoom <= 10) {
                 this.setOptions()
@@ -268,20 +288,65 @@ export default {
                 const amapComponent = this.echartsMap.getModel().getComponent('amap')
                 const canvas = document.getElementsByTagName('canvas')[1]
                 canvas.style.cursor = 'pointer'
-                amapComponent.setEChartsLayerInteractive(false)
+                // amapComponent.setEChartsLayerInteractive(false)
 
                 if (!this.isMarkerShown) {
                     this.isMarkerShown = true
-                    this.addMarkers()
+                    // this.addMarkers()
                 }
 
                 if (this.isScatterShown) {
                     this.isScatterShown = false
-                    this.hideScatters()
+                    // this.hideScatters()
                 }
             }
 
+            // 回到首页按钮的显隐
             if (this.currentZoom !== this.originalZoom) this.$parent.changeShowBackToHome(true)
+
+            // 加大缩放扩大步进
+            // this.handleZoomMore()
+        },
+
+        /**
+         * ZoomMore
+         */
+        handleZoomMore() {
+            // 增大缩放和放大的步进
+            const now = new Date().getTime()
+            // 判断两次缩放的时间间隔是否太短
+            if (this.lastZoomTime && now - this.lastZoomTime < 800) {
+                return
+            }
+            this.lastZoomTime = now
+            const zoomStep = 0.5
+            const maxZoom = this.amap.getZooms()[1],
+                minZoom = this.amap.getZooms()[0]
+
+            const zoom = this.amap.getZoom()
+
+            if (this.lastZoom <= this.originalZoom || this.lastZoom >= maxZoom) return
+
+            const zoomOffset = this.currentZoom - this.lastZoom
+            const nextZoom = zoomOffset > 0 ? zoom + zoomStep : zoom - zoomStep
+
+            // 判断最新缩放的下限和上限
+            if (nextZoom >= maxZoom) {
+                return this.amap.setZoomAndCenter(maxZoom, this.currentCenter)
+            } else if (nextZoom <= minZoom) {
+                return this.amap.setZoomAndCenter(this.originalZoom, this.currentCenter)
+            }
+            console.log('%c [ nextZoom ]-320', 'font-size:13px; background:pink; color:#bf2c9f;', nextZoom)
+
+            this.amap.setZoomAndCenter(nextZoom, this.currentCenter)
+        },
+        /**
+         * 加大缩放
+         */
+        handleZoomStart(e) {
+            const zoom = this.amap.getZoom()
+            console.log('%c [ zoom ]-324', 'font-size:13px; background:pink; color:#bf2c9f;', zoom)
+            this.lastZoom = zoom
         },
 
         /**
@@ -417,6 +482,7 @@ export default {
          * 设置Ehechart+地图配置
          */
         setOptions(data) {
+            //    if(this.echartsMap) this.echartsMap.clear()
             const initOptions = {
                 amap: {
                     viewMode: '3D',
@@ -429,7 +495,10 @@ export default {
                     echartsLayerInteractive: true,
                     labelzIndex: 100,
                     roam: true,
-
+                    // showLabel: false,
+                    features: ['bg', 'road', 'building', 'point'],
+                    zooms: [initZoom, 18],
+                    // layers: [disCountry, disProvince],
                 },
                 series: [
                     {
@@ -446,7 +515,7 @@ export default {
                         rippleEffect: {
                             number: 3,
                             period: 2,
-                            scale: 6,
+                            scale: 4,
                             brushType: 'fill'
                         }
                     },
@@ -456,10 +525,19 @@ export default {
                         data: this.cityHospitals,
                         itemStyle: {
                             color: '#4577ba',
+                            emphasis: {
+                                scale: 1.5,
+                                itemStyle: {
+                                    color: '#fff',
+                                    borderColor: '#fff',
+                                    borderWidth: 2
+                                }
+                            }
                         },
                         symbolSize: this.citySymbolSize,
                         large: true,
                         largeThreshold: 100,
+
 
                     },
                     {
@@ -524,6 +602,15 @@ export default {
         },
 
         /**
+         * scattersHover
+         */
+        setScatterHover() {
+            let hoverOption = {
+
+            }
+        },
+
+        /**
          * 初始化高德地图
          */
         initAMap() {
@@ -540,10 +627,40 @@ export default {
 
             // 监听地图缩放 移动
             amap.on("zoomend", this.handleZoom)
+            amap.on("zoomchange", this.handleZoomStart)
             amap.on("moveend", this.handleMove)
 
-            // 禁用 ECharts 图层交互，从而使高德地图图层可以点击交互
-            // amapComponent.setEChartsLayerInteractive(false)
+            // 初始化时显示省级行政区标注
+            let layerProvince = new AMap.LabelsLayer({
+                collision: false, // 开启标注避让
+                animation: true, // 开启标注淡入动画
+            })
+
+            const that = this
+
+            amap.on("complete", function () {
+                for (let i = 0; i < LabelsData.length; i++) {
+                    for (let i = 0; i < LabelsData.length; i++) {
+                        const province = LabelsData[i]
+                        const marker = new AMap.LabelMarker(province)
+                        layerProvince.add(marker)
+                    }
+                }
+                that.layerProvince = layerProvince
+                amap.add(that.layerProvince)
+            })
+
+            // 胡焕庸线-黑河腾冲线
+            const polyline1 = new AMap.Polyline({
+                path: [
+                    [127.500704, 50.252449],
+                    [98.490382, 25.020147]
+                ],
+                strokeColor: '#E4BD9D',
+                strokeWeight: 2,
+                strokeOpacity: 1
+            })
+            polyline1.setMap(amap)
         },
 
         /**
