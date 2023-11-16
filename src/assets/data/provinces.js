@@ -259,7 +259,7 @@ var districts = [
     {
         citycode: "010",
         adcode: "110000",
-        name: " ",
+        name: "北京",
         center: "116.405285,39.904989",
         level: "province",
         districts: []
@@ -292,6 +292,7 @@ const directions = {
     '香港': 'right',
     '台湾': 'bottom',
     '内蒙古': 'top',
+    '四川': 'left'
 
 }
 

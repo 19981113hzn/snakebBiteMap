@@ -13,21 +13,35 @@ import LabelsData from '@/assets/data/provinces'
 const AMap = window.AMap || null
 const screenWidth = window.innerWidth
 
-let initZoom = 4.2,
+let initZoom = 5.0,
     initCitySymbolSize = 6,
     initBasicSymbolSize = 4,
-    initCenter = [98.39, 33.9]
-if (screenWidth < 768) {
+    initCenter = [98.39, 37.4]
+if (screenWidth <= 768) {
     initZoom = 3.5
-} else if (screenWidth < 992) {
-    initZoom = 3.8
-} else if (screenWidth < 1200) {
+}
+else if (screenWidth <= 992) {
+    initZoom = 4.2
+}
+else if (screenWidth <= 1280) {
     initCitySymbolSize = 4
     initBasicSymbolSize = 2
-    initZoom = 4
-} else if (screenWidth > 1920) {
-    initZoom = 4.8
+    initCenter = [98.39, 33.9]
+    initZoom = 4.5
 }
+else if (screenWidth <= 1680) {
+    initCenter = [98.39, 35.9]
+    initZoom = 4.7
+}
+else if (screenWidth <= 1920) {
+    initCenter = [98.39, 37.9]
+    initZoom = 5.0
+}
+else if (screenWidth > 1920) {
+    initCenter = [98.39, 37.4]
+    initZoom = 5.2
+}
+
 // 移动端暂不处理
 else if (screenWidth <= 375) {
     initCitySymbolSize = 2
@@ -58,7 +72,7 @@ export default {
             showBackToHome: true,
             initAmapOption: {
                 viewMode: '3D',
-                center: [98.39, 33.9],
+                center: initCenter,
                 zoom: initZoom,
                 resizeEnable: true,
                 renderOnMoving: true,
@@ -68,7 +82,7 @@ export default {
                 zooms: [initZoom, 18],
                 // showLabel: false,
                 // echartsLayerInteractive: true,
-                // labelzIndex: 100,
+                labelzIndex: -1,
 
             },
             citySymbolSize: initCitySymbolSize,
@@ -263,15 +277,25 @@ export default {
             this.citySymbolSize = 6 * (Math.pow(1.3, this.currentZoom - this.originalZoom))
             this.basicSymbolSize = 4 * (Math.pow(1.3, this.currentZoom - this.originalZoom))
 
-            // 添加移除省份标注
-            if (this.currentZoom >= 5 && this.showProvince) {
+            if (this.currentZoom > 1.1 * this.originalZoom) {
                 this.showProvince = false
                 // 移除标注层
                 this.amap.remove(this.layerProvince)
-            } else if(this.currentZoom < 5 && !this.showProvince) {
+                this.amap.setLabelzIndex(100)
+                
+            } else {
+                this.amap.setLabelzIndex(-1)
                 this.showProvince = true
                 this.amap.add(this.layerProvince)
             }
+
+            // 添加移除省份标注
+            // if (this.currentZoom > 5 && this.showProvince) {
+
+
+            // } else if (this.currentZoom <= 5 && !this.showProvince) {
+                
+            // }
 
             //marker 和 scatters 的显隐
             if (this.currentZoom <= 10) {
@@ -288,16 +312,16 @@ export default {
                 const amapComponent = this.echartsMap.getModel().getComponent('amap')
                 const canvas = document.getElementsByTagName('canvas')[1]
                 canvas.style.cursor = 'pointer'
-                // amapComponent.setEChartsLayerInteractive(false)
+                amapComponent.setEChartsLayerInteractive(false)
 
                 if (!this.isMarkerShown) {
                     this.isMarkerShown = true
-                    // this.addMarkers()
+                    this.addMarkers()
                 }
 
                 if (this.isScatterShown) {
                     this.isScatterShown = false
-                    // this.hideScatters()
+                    this.hideScatters()
                 }
             }
 
@@ -336,7 +360,6 @@ export default {
             } else if (nextZoom <= minZoom) {
                 return this.amap.setZoomAndCenter(this.originalZoom, this.currentCenter)
             }
-            console.log('%c [ nextZoom ]-320', 'font-size:13px; background:pink; color:#bf2c9f;', nextZoom)
 
             this.amap.setZoomAndCenter(nextZoom, this.currentCenter)
         },
@@ -377,34 +400,69 @@ export default {
             let icon = null
             const markers = []
 
-            const setIconSize = (size) => {
+            const setIconSize = (size, image) => {
                 icon = new AMap.Icon({
                     size: new AMap.Size(size, size),
-                    image: 'https://bn.devfp.ps.netease.com/file/65548f47671882f53acecab51Lw2U74x02',
+                    image: image,
                     imageSize: new AMap.Size(size, size)
                 })
             }
 
-            this.hospitalInfos.forEach((item, index) => {
-                setIconSize(36)
+            const normalScatters = this.hospitalInfos.filter(item => {
+                return !item.flickerFlag
+            })
+
+            const image = 'https://bn.devfp.ps.netease.com/file/65548f47671882f53acecab51Lw2U74x02'
+
+            normalScatters.forEach((item, index) => {
+                setIconSize(36, image)
                 const marker = new AMap.Marker({
                     position: item.value,
                     icon: icon,
-                    // offset: new AMap.Pixel(-12, -36),
                     zIndex: 100,
-                    map: this.amap
+                    map: this.amap,
+                    topWhenClick: true,
                 })
                 marker.on('click', () => {
-                    setIconSize(48)
-                    marker.setIcon(icon)
                     this.showTooltip(item)
-
+                    marker.setAnimation('AMAP_ANIMATION_DROP')
                     this.infoWindow.on('close', () => {
-                        setIconSize(36)
+                        setIconSize(36, image)
                         marker.setIcon(icon)
                     })
                 })
 
+                markers.push(marker)
+            })
+
+            // 闪烁点
+            this.newScatters.forEach((item, index) => {
+                const content = `
+                        <img class="custom_marker_icon" width="36" height="36" src="${image}"/>    
+                `
+                setIconSize(36, image)
+                const marker = new AMap.Marker({
+                    position: item.value,
+                    content: content,
+                    zIndex: 100,
+                    map: this.amap,
+                    topWhenClick: true,
+                    title: '当天有病例创建',
+                    label: {
+                        content: '新增病例',
+                        direction: 'top'
+                    }
+                })
+                marker.on('click', () => {
+                    // setIconSize(48, image)
+                    // marker.setIcon(icon)
+                    this.showTooltip(item)
+
+                    this.infoWindow.on('close', () => {
+                        setIconSize(36, image)
+                        marker.setIcon(icon)
+                    })
+                })
                 markers.push(marker)
             })
             this.markers = markers
@@ -426,11 +484,11 @@ export default {
         showTooltip(item) {
             const authNum = item.authNum ? item.authNum : 0,
                 calculateInventory = item.calculateInventory ? item.calculateInventory : 0
+            // '<p class="info_docnum info_second">医生数量：' + authNum + '</p>' +
 
             const content = '<div class="info_window">' +
                 '<p class="info_name">机构名称：' + item.name + '</p>' +
                 '<p class="info_address info_second">地址：' + item.address + '</p>' +
-                '<p class="info_docnum info_second">医生数量：' + authNum + '</p>' +
                 '<p class="info_lnventory info_second">抗蛇毒血清计算库存数：' + calculateInventory + '</p>' +
                 '</div>'
 
@@ -493,7 +551,7 @@ export default {
                     animationDurationUpdate: 0,
                     mapStyle: 'amap://styles/fresh',
                     echartsLayerInteractive: true,
-                    labelzIndex: 100,
+                    labelzIndex: -1,
                     roam: true,
                     // showLabel: false,
                     features: ['bg', 'road', 'building', 'point'],
@@ -515,7 +573,7 @@ export default {
                         rippleEffect: {
                             number: 3,
                             period: 2,
-                            scale: 4,
+                            scale: 6,
                             brushType: 'fill'
                         }
                     },
@@ -562,7 +620,10 @@ export default {
 
             if (!this.echartsMap) this.echartsMap = echarts.init(this.$refs.mapContainer)
 
-            this.addEchartsEvents()
+            // 等待canvas渲染完成
+            setTimeout(() => {
+                this.addEchartsEvents()
+            }, 500)
 
             // 防止上个渲染未完成进行下一个渲染报错
             // setTimeout(() => {
@@ -576,11 +637,12 @@ export default {
          */
         addEchartsEvents() {
             const canvas = document.getElementsByTagName('canvas')[1]
-            if (!canvas) return
+            if (!canvas || !this.echartsMap) return
 
             const isScatter = (params) => {
                 return params.componentType === 'series' && (params.seriesType === 'scatter' || params.seriesType === 'effectScatter')
             }
+            canvas.style.cursor = 'grabbing'
             // 添加echarts点位交互
             this.echartsMap.on('click', (params) => {
                 if (isScatter) {
@@ -599,6 +661,7 @@ export default {
                     canvas.style.cursor = 'grabbing'
                 }
             })
+
         },
 
         /**
@@ -624,6 +687,11 @@ export default {
 
             // 添加控件  放大缩小
             amap.addControl(new AMap.Scale())
+            amap.addControl(new AMap.ToolBar({
+                position: 'RB',
+                // liteStyle: true
+                // direction: false
+            }))
 
             // 监听地图缩放 移动
             amap.on("zoomend", this.handleZoom)
@@ -651,7 +719,7 @@ export default {
             })
 
             // 胡焕庸线-黑河腾冲线
-            const polyline1 = new AMap.Polyline({
+            const polyline = new AMap.Polyline({
                 path: [
                     [127.500704, 50.252449],
                     [98.490382, 25.020147]
@@ -660,7 +728,7 @@ export default {
                 strokeWeight: 2,
                 strokeOpacity: 1
             })
-            polyline1.setMap(amap)
+            polyline.setMap(amap)
         },
 
         /**
