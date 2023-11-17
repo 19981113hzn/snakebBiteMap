@@ -1,29 +1,57 @@
 <template>
     <div id="Home" class="home-view">
-        <div class="statistics-container">
-            <StatisticsView ref="statisticsView"/>
+        <div class="home-pc">
+            <div class="statistics-container">
+                <StatisticsViewPC ref="statisticsView" />
+            </div>
+
+            <div class="map-container">
+                <MapViewPC ref="mapView" />
+            </div>
         </div>
 
-        <div class="map-container">
-            <MapView ref="mapView"/>
-        </div>
+        <!-- PC端 -->
+        <!-- <div class="home-pc" v-if="adapter === 'PC'">
+            <div class="statistics-container">
+                <StatisticsViewPC ref="statisticsView" />
+            </div>
+
+            <div class="map-container">
+                <MapViewPC ref="mapView" />
+            </div>
+        </div> -->
+
+        <!-- 移动端 -->
+        <!-- <div class="home-mobile" v-else>
+            <div class="map-container">
+                <MapViewMobile ref="mapView" />
+            </div>
+
+            <div class="statistics-container">
+                <StatisticsViewMobile ref="statisticsView" />
+            </div>
+        </div> -->
     </div>
 </template>
 
 <script>
-import MapView from './map/index.vue'
-import StatisticsView from './statistics/index.vue'
+import MapViewPC from './map/PC/index.vue'
+import StatisticsViewPC from './statistics/PC/index.vue'
+// import MapViewMobile from './map/mobile/index.vue'
+// import StatisticsViewMobile from './statistics/mobile/index.vue'
+// import Ua from '@/plugin/ua'
 
 export default {
     name: 'HomeView',
     mixins: [],
     components: {
-        MapView,
-        StatisticsView
+        MapViewPC,
+        StatisticsViewPC,
+        // MapViewMobile,
+        // StatisticsViewMobile
     },
     data() {
         return {
-
         }
     },
     methods: {
@@ -53,7 +81,23 @@ export default {
         }
     },
     computed: {
+        // adapter() {
+        //     let result = 'PC'
+        //     const screenWidth = window.innerWidth
 
+        //     if (Ua.isAndroid() || Ua.isIos()) {
+        //         result = 'MOBILE'
+        //     } else {
+        //         if (screenWidth <= 767) {
+        //             result = 'MOBILE'
+        //         } else if (screenWidth <= 1039) {
+        //             result = 'PC'
+        //         } else {
+        //             result = 'PC'
+        //         }
+        //     }
+        //     return result
+        // }
     },
     mounted() {
         // 监听窗口大小变化，实现全屏自适应大小的效果

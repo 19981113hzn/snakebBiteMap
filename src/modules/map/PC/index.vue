@@ -9,7 +9,6 @@ import * as echarts from 'echarts'
 import "echarts-extension-amap"
 import SocketService from "@/plugin/websocket"
 import LabelsData from '@/assets/data/provinces'
-import GeoJson from '@/assets/data/china.json'
 
 
 const AMap = window.AMap || null
@@ -19,6 +18,7 @@ let initZoom = 5.0,
     initCitySymbolSize = 6,
     initBasicSymbolSize = 4,
     initCenter = [98.39, 37.4]
+    
 if (screenWidth <= 768) {
     initZoom = 3.5
 }
@@ -55,7 +55,7 @@ else if (screenWidth <= 375) {
 }
 
 export default {
-    name: 'MapView',
+    name: 'MapViewPC',
     data() {
         return {
             echartsMap: null,

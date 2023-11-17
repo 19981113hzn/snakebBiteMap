@@ -1,0 +1,139 @@
+.statistics-view-mobile {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  overflow: hidden;
+  transition: height 0.3s ease-in-out;
+  .expanded {
+    height: 80vh;
+  }
+
+  .collapsed {
+    height: 20vh;
+  }
+}
+
+.statistics-view {
+  position: relative;
+  .statistics-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    transition: height 0.5s ease-in-out;
+    box-sizing: border-box;
+    .title {
+      font-size: 16px;
+      margin-bottom: 15px;
+      color: #376db3;
+      font-weight: 600;
+    }
+
+    .data-group {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      .data-item {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        flex-basis: 50%;
+        margin-bottom: 10px;
+
+        .data-label {
+          margin-bottom: 5px;
+          font-size: 14px;
+          font-weight: bold;
+          text-align: center;
+          color: #696a6a;
+        }
+
+        .data-value {
+          font-size: 16px;
+          margin-bottom: 5px;
+          display: flex;
+          align-items: end;
+
+          .value-number {
+            font-weight: 600;
+            margin-right: 12px;
+          }
+
+          .data-label {
+            margin-bottom: 0;
+          }
+        }
+      }
+    }
+
+    .tips {
+      align-self: flex-start;
+      font-size: 12px;
+      font-weight: bold;
+      color: #696a6a;
+      .tip {
+        position: relative;
+        text-align: left;
+        text-indent: 15px;
+        &::before {
+          content: "";
+          width: 10px;
+          height: 10px;
+          position: absolute;
+          top: 50%;
+          left: 0%;
+          transform: translate(0%, -50%);
+          border-radius: 50%;
+          background: #4577ba;
+        }
+      }
+
+      .tip-basic {
+        margin-bottom: 10px;
+        &::before {
+          background: #1dc254;
+        }
+      }
+    }
+  }
+
+  .back-to-home {
+    position: absolute;
+    right: 20px;
+    top: -56px;
+    width: 40px;
+    height: 40px;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    img {
+      display: block;
+      width: 24px;
+      height: 24px;
+    }
+  }
+}
+
+.handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1;
+}
+
+.handle-bar {
+  width: 40px;
+  height: 4px;
+  background-color: #ccc;
+  border-radius: 2px;
+}

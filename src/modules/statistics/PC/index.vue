@@ -48,7 +48,7 @@
         </div>
 
         <div class="back-to-home" v-if="showBackToHome" @click="backToHome">
-            <img width="20" height="20" src="../../assets//images//home.png" alt="">
+            <img width="20" height="20" src="../../../assets/images/home.png" alt="">
         </div>
     </div>
 </template>
@@ -57,7 +57,7 @@
 import CountUp from '@/components/IcountUp.vue'
 
 export default {
-    name: 'StatisticsView',
+    name: 'StatisticsViewPC',
     components: {
         CountUp
     },
