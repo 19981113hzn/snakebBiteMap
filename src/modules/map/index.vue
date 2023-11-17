@@ -9,6 +9,8 @@ import * as echarts from 'echarts'
 import "echarts-extension-amap"
 import SocketService from "@/plugin/websocket"
 import LabelsData from '@/assets/data/provinces'
+import GeoJson from '@/assets/data/china.json'
+
 
 const AMap = window.AMap || null
 const screenWidth = window.innerWidth
@@ -30,12 +32,14 @@ else if (screenWidth <= 1280) {
     initZoom = 4.5
 }
 else if (screenWidth <= 1680) {
+    console.log('%c [ 1680 ]-33', 'font-size:13px; background:pink; color:#bf2c9f;', 1680)
     initCenter = [98.39, 35.9]
-    initZoom = 4.7
+    initZoom = 4.5
 }
 else if (screenWidth <= 1920) {
+    console.log('%c [ 1920 ]-37', 'font-size:13px; background:pink; color:#bf2c9f;', 1920)
     initCenter = [98.39, 37.9]
-    initZoom = 5.0
+    initZoom = 4.8
 }
 else if (screenWidth > 1920) {
     initCenter = [98.39, 37.4]
@@ -82,7 +86,6 @@ export default {
                 zooms: [initZoom, 18],
                 // showLabel: false,
                 // echartsLayerInteractive: true,
-                labelzIndex: -1,
 
             },
             citySymbolSize: initCitySymbolSize,
@@ -120,7 +123,7 @@ export default {
          */
         getData() {
             this.ws = SocketService.Instance
-            console.log('主动连接websocket发送消息');
+            console.log('主动连接websocket发送消息')
             this.ws.sendMessage(
                 {},
                 this.handledata
@@ -277,24 +280,24 @@ export default {
             this.citySymbolSize = 6 * (Math.pow(1.3, this.currentZoom - this.originalZoom))
             this.basicSymbolSize = 4 * (Math.pow(1.3, this.currentZoom - this.originalZoom))
 
-            if (this.currentZoom > 1.1 * this.originalZoom) {
-                this.showProvince = false
-                // 移除标注层
-                this.amap.remove(this.layerProvince)
-                this.amap.setLabelzIndex(100)
-                
-            } else {
-                this.amap.setLabelzIndex(-1)
-                this.showProvince = true
-                this.amap.add(this.layerProvince)
-            }
+            // if (this.currentZoom > 1.1 * this.originalZoom) {
+            //     this.showProvince = false
+            //     // 移除标注层
+            //     this.amap.remove(this.layerProvince)
+            //     this.amap.setLabelzIndex(100)
+
+            // } else {
+            //     this.amap.setLabelzIndex(-1)
+            //     this.showProvince = true
+            //     this.amap.add(this.layerProvince)
+            // }
 
             // 添加移除省份标注
             // if (this.currentZoom > 5 && this.showProvince) {
 
 
             // } else if (this.currentZoom <= 5 && !this.showProvince) {
-                
+
             // }
 
             //marker 和 scatters 的显隐
@@ -447,11 +450,6 @@ export default {
                     zIndex: 100,
                     map: this.amap,
                     topWhenClick: true,
-                    title: '当天有病例创建',
-                    label: {
-                        content: '新增病例',
-                        direction: 'top'
-                    }
                 })
                 marker.on('click', () => {
                     // setIconSize(48, image)
@@ -575,7 +573,7 @@ export default {
                             period: 2,
                             scale: 6,
                             brushType: 'fill'
-                        }
+                        },
                     },
                     {
                         type: 'scatter',
@@ -583,14 +581,6 @@ export default {
                         data: this.cityHospitals,
                         itemStyle: {
                             color: '#4577ba',
-                            emphasis: {
-                                scale: 1.5,
-                                itemStyle: {
-                                    color: '#fff',
-                                    borderColor: '#fff',
-                                    borderWidth: 2
-                                }
-                            }
                         },
                         symbolSize: this.citySymbolSize,
                         large: true,
@@ -702,6 +692,9 @@ export default {
             let layerProvince = new AMap.LabelsLayer({
                 collision: false, // 开启标注避让
                 animation: true, // 开启标注淡入动画
+                zIndex: 10000, // 将zIndex设置为最大值
+                zIndexInterval: 1,
+                fitView: true,
             })
 
             const that = this
@@ -715,9 +708,9 @@ export default {
                     }
                 }
                 that.layerProvince = layerProvince
-                amap.add(that.layerProvince)
+                // amap.add(that.layerProvince)
             })
-
+            // 设置省级行政区标注的zIndex为最大值
             // 胡焕庸线-黑河腾冲线
             const polyline = new AMap.Polyline({
                 path: [

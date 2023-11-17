@@ -1,5 +1,4 @@
 var districts = [
-    //const dists = [
     {
         citycode: [],
         adcode: "440000",
@@ -309,9 +308,9 @@ for (let i = 0; i < districts.length; i++) {
             offset: [0, 0],
             zooms: [3, 20],
             style: {
-                fontSize: 14,
+                fontSize: 12,
                 fontWeight: "400",
-                fillColor: "#a59baa",
+                fillColor: "#555",
             }
         }
     };
