@@ -18,7 +18,7 @@ let initZoom = 5.0,
     initCitySymbolSize = 6,
     initBasicSymbolSize = 4,
     initCenter = [98.39, 37.4]
-    
+
 if (screenWidth <= 768) {
     initZoom = 3.5
 }
@@ -32,12 +32,10 @@ else if (screenWidth <= 1280) {
     initZoom = 4.5
 }
 else if (screenWidth <= 1680) {
-    console.log('%c [ 1680 ]-33', 'font-size:13px; background:pink; color:#bf2c9f;', 1680)
     initCenter = [98.39, 35.9]
     initZoom = 4.5
 }
 else if (screenWidth <= 1920) {
-    console.log('%c [ 1920 ]-37', 'font-size:13px; background:pink; color:#bf2c9f;', 1920)
     initCenter = [98.39, 37.9]
     initZoom = 4.8
 }
@@ -99,6 +97,12 @@ export default {
         }
     },
     computed: {
+        showMapLine() {
+            let result = false
+            const hfyxFlag = this.$store.state.data.config.hfyxFlag
+            if (hfyxFlag) result = true
+            return result
+        }
     },
     mounted() {
         this.getData()
@@ -174,8 +178,6 @@ export default {
         handledata(data) {
             // 增量数据
             if (data.dataType === 1 && this.$store.state.data && (data.statisticsInfo || data.hospitalInfos)) {
-                // this.addData(data)
-
                 let newData = this.$store.state.data || {}
 
                 // 如果有信息返回，刷新数据
@@ -371,7 +373,6 @@ export default {
          */
         handleZoomStart(e) {
             const zoom = this.amap.getZoom()
-            console.log('%c [ zoom ]-324', 'font-size:13px; background:pink; color:#bf2c9f;', zoom)
             this.lastZoom = zoom
         },
 
@@ -655,15 +656,6 @@ export default {
         },
 
         /**
-         * scattersHover
-         */
-        setScatterHover() {
-            let hoverOption = {
-
-            }
-        },
-
-        /**
          * 初始化高德地图
          */
         initAMap() {
@@ -710,18 +702,20 @@ export default {
                 that.layerProvince = layerProvince
                 // amap.add(that.layerProvince)
             })
-            // 设置省级行政区标注的zIndex为最大值
+
             // 胡焕庸线-黑河腾冲线
-            const polyline = new AMap.Polyline({
-                path: [
-                    [127.500704, 50.252449],
-                    [98.490382, 25.020147]
-                ],
-                strokeColor: '#E4BD9D',
-                strokeWeight: 2,
-                strokeOpacity: 1
-            })
-            polyline.setMap(amap)
+            if (this.showMapLine) {
+                const polyline = new AMap.Polyline({
+                    path: [
+                        [127.500704, 50.252449],
+                        [98.490382, 25.020147]
+                    ],
+                    strokeColor: '#E4BD9D',
+                    strokeWeight: 2,
+                    strokeOpacity: 1
+                })
+                polyline.setMap(amap)
+            }
         },
 
         /**

@@ -1,7 +1,7 @@
 <template>
     <!-- :class="{ 'expanded': expanded, 'collapsed': collapsed }" -->
     <div class="statistics-view statistics-view-mobile" >
-        <div class="handle" @touchstart="touchStart" @touchmove="touchMove" @touchend="touchEnd" ref="handle">
+        <div class="handle" @click.stop @touchstart="touchStart" @touchmove="touchMove" @touchend="touchEnd" ref="handle">
             <div class="handle-bar"></div>
         </div>
 
@@ -89,6 +89,7 @@ export default {
         },
         touchStart(e) {
             this.startY = e.touches[0].clientY
+            console.log('%c [ startY ]-92', 'font-size:13px; background:pink; color:#bf2c9f;', this.startY)
             this.lastY = this.startY
             this.contentHeight = this.$refs.content.offsetHeight
             console.log('%c [ this.contentHeight ]-93', 'font-size:13px; background:pink; color:#bf2c9f;', this.contentHeight)
@@ -96,6 +97,7 @@ export default {
         },
         touchMove(e) {
             const deltaY = e.touches[0].clientY - this.lastY
+            console.log('%c [ deltaY ]-99', 'font-size:13px; background:pink; color:#bf2c9f;', deltaY)
             this.lastY = e.touches[0].clientY
             let newHeight = this.contentHeight - deltaY
             if (newHeight > this.maxContentHeight) {
@@ -112,11 +114,14 @@ export default {
         },
         touchEnd() {
             if (this.expanded) {
-                if (this.minContentHeight < this.contentHeight && this.contentHeight < this.maxContentHeight) this.$refs.content.style.height = this.maxContentHeight + 'px'
-                if (this.contentHeight === Math.floor(this.minContentHeight)) this.$refs.content.style.height = 'auto'
+                if (this.minContentHeight < this.contentHeight && this.contentHeight < this.maxContentHeight) {
+                    console.log('到最大')
+                    this.$refs.content.style.height = this.maxContentHeight + 'px'
+                }
+                if ((Math.abs(this.contentHeight - Math.floor(this.minContentHeight)) < 10)) this.$refs.content.style.height = 'auto'
             } else if (this.collapsed) {
-                if (this.contentHeight === Math.floor(this.maxContentHeight)) this.$refs.content.style.height = 'auto'
-                if (this.minContentHeight < this.contentHeight && this.contentHeight < this.maxContentHeight) this.$refs.content.style.height = this.maxContentHeight + 'px'
+                if ((Math.abs(this.contentHeight - Math.floor(this.maxContentHeight)) < 10)) this.$refs.content.style.height = 'auto'
+                if (this.minContentHeight < this.contentHeight && this.contentHeight < this.maxContentHeight) this.$refs.content.style.height = this.minContentHeight + 'px'
             }
         },
     },
