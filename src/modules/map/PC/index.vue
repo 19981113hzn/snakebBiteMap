@@ -82,6 +82,7 @@ export default {
                 mapStyle: 'amap://styles/fresh',
                 features: ['bg', 'road', 'building', 'point'],
                 zooms: [initZoom, 18],
+                labelzIndex: -1,
                 // showLabel: false,
                 // echartsLayerInteractive: true,
 
@@ -192,7 +193,7 @@ export default {
 
                 return
             }
-            
+
             // 全量数据，完全替换
             this.$store.dispatch('setData', data)
 
@@ -240,6 +241,26 @@ export default {
 
             this.citySymbolSize = 6 * (Math.pow(1.3, this.currentZoom - this.originalZoom))
             this.basicSymbolSize = 4 * (Math.pow(1.3, this.currentZoom - this.originalZoom))
+
+            if (this.currentZoom > 1.1 * this.originalZoom && this.currentZoom > 5) {
+                this.showProvince = false
+                // 移除标注层
+                this.amap.remove(this.layerProvince)
+                this.amap.setLabelzIndex(100)
+
+            } else {
+                this.amap.setLabelzIndex(-1)
+                this.showProvince = true
+                this.amap.add(this.layerProvince)
+            }
+
+            // 添加移除省份标注
+            // if (this.currentZoom > 5 && this.showProvince) {
+
+
+            // } else if (this.currentZoom <= 5 && !this.showProvince) {
+
+            // }
 
             //marker 和 scatters 的显隐
             if (this.currentZoom <= 10) {
@@ -615,8 +636,30 @@ export default {
             amap.on("zoomend", this.handleZoom)
             amap.on("zoomchange", this.handleZoomStart)
             amap.on("moveend", this.handleMove)
+            // 初始化时显示省级行政区标注
+            let layerProvince = new AMap.LabelsLayer({
+                collision: false, // 开启标注避让
+                animation: true, // 开启标注淡入动画
+                zIndex: 10000, // 将zIndex设置为最大值
+                zIndexInterval: 1,
+                fitView: true,
+            })
 
-           
+            const that = this
+
+            amap.on("complete", function () {
+                for (let i = 0; i < LabelsData.length; i++) {
+                    for (let i = 0; i < LabelsData.length; i++) {
+                        const province = LabelsData[i]
+                        const marker = new AMap.LabelMarker(province)
+                        layerProvince.add(marker)
+                    }
+                }
+                that.layerProvince = layerProvince
+                amap.add(that.layerProvince)
+            })
+
+
         },
 
         /**

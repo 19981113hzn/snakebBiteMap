@@ -147,7 +147,7 @@ var districts = [
         citycode: [],
         adcode: "630000",
         name: "青海",
-        center: "101.778916,36.623178",
+        center: "96.778916,36.623178",
         level: "province",
         districts: []
     },
@@ -300,7 +300,7 @@ for (let i = 0; i < districts.length; i++) {
         name: '',
         position: [116.12, 39.11],
         zooms: [4, 13],
-        zIndex: 1,
+        zIndex: 1000000000,
         opacity: 1,
         text: {
             content: '',
@@ -309,8 +309,8 @@ for (let i = 0; i < districts.length; i++) {
             zooms: [3, 20],
             style: {
                 fontSize: 12,
-                fontWeight: "400",
-                fillColor: "#555",
+                fontWeight: "600",
+                fillColor: "#675670",
             }
         }
     };
