@@ -82,6 +82,9 @@ export default {
          */
         changeShowBackToHome(show) {
             this.$refs.statisticsView.isShowBackToHome(show)
+        },
+        showHhyline() {
+            this.$refs.mapView.showHhyline()
         }
     },
     computed: {

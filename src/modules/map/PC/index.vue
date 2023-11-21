@@ -94,15 +94,11 @@ export default {
             lastZoom: null,
             layerProvince: {},
             showProvince: true,
+            showMapLine: false,
+            polyline: null
         }
     },
     computed: {
-        showMapLine() {
-            let result = false
-            const hfyxFlag = this.$store.state.data.config.hfyxFlag
-            if (hfyxFlag) result = true
-            return result
-        }
     },
     mounted() {
         this.getData()
@@ -132,43 +128,6 @@ export default {
                 {},
                 this.handledata
             )
-        },
-
-        /**
-         * 模拟数据刷新时的情况
-         */
-        addData(data) {
-            data.hospitalInfos = [
-                {
-                    address: "辽宁省铁岭市铁岭县大甸子镇大甸子村张双线",
-                    authNum: 999,
-                    calculateInventory: 888,
-                    flickerFlag: 1,
-                    id: 1011961,
-                    latitude: "42.175534",
-                    longitude: "124.108466",
-                    name: "铁岭县大甸子镇中心卫生院",
-                    region: 0,
-                },
-                {
-                    address: "黑龙江黑龙江黑龙江黑龙江铁岭大方",
-                    authNum: 0,
-                    calculateInventory: 1005,
-                    flickerFlag: 1,
-                    id: 998866,
-                    latitude: "47.175534",
-                    longitude: "133.108466",
-                    name: "黑龙江铁岭大方镇中心卫生院",
-                    region: 0,
-                },
-            ]
-            data.statisticsInfo = {
-                blxqzs: 34178,
-                blzs: 23477,
-                cqjzd: 1965,
-                jcjzd: 1748,
-                rzys: 11641,
-            }
         },
 
         /**
@@ -233,7 +192,7 @@ export default {
 
                 return
             }
-
+            
             // 全量数据，完全替换
             this.$store.dispatch('setData', data)
 
@@ -282,26 +241,6 @@ export default {
             this.citySymbolSize = 6 * (Math.pow(1.3, this.currentZoom - this.originalZoom))
             this.basicSymbolSize = 4 * (Math.pow(1.3, this.currentZoom - this.originalZoom))
 
-            // if (this.currentZoom > 1.1 * this.originalZoom) {
-            //     this.showProvince = false
-            //     // 移除标注层
-            //     this.amap.remove(this.layerProvince)
-            //     this.amap.setLabelzIndex(100)
-
-            // } else {
-            //     this.amap.setLabelzIndex(-1)
-            //     this.showProvince = true
-            //     this.amap.add(this.layerProvince)
-            // }
-
-            // 添加移除省份标注
-            // if (this.currentZoom > 5 && this.showProvince) {
-
-
-            // } else if (this.currentZoom <= 5 && !this.showProvince) {
-
-            // }
-
             //marker 和 scatters 的显隐
             if (this.currentZoom <= 10) {
                 this.setOptions()
@@ -332,9 +271,6 @@ export default {
 
             // 回到首页按钮的显隐
             if (this.currentZoom !== this.originalZoom) this.$parent.changeShowBackToHome(true)
-
-            // 加大缩放扩大步进
-            // this.handleZoomMore()
         },
 
         /**
@@ -680,42 +616,7 @@ export default {
             amap.on("zoomchange", this.handleZoomStart)
             amap.on("moveend", this.handleMove)
 
-            // 初始化时显示省级行政区标注
-            let layerProvince = new AMap.LabelsLayer({
-                collision: false, // 开启标注避让
-                animation: true, // 开启标注淡入动画
-                zIndex: 10000, // 将zIndex设置为最大值
-                zIndexInterval: 1,
-                fitView: true,
-            })
-
-            const that = this
-
-            amap.on("complete", function () {
-                for (let i = 0; i < LabelsData.length; i++) {
-                    for (let i = 0; i < LabelsData.length; i++) {
-                        const province = LabelsData[i]
-                        const marker = new AMap.LabelMarker(province)
-                        layerProvince.add(marker)
-                    }
-                }
-                that.layerProvince = layerProvince
-                // amap.add(that.layerProvince)
-            })
-
-            // 胡焕庸线-黑河腾冲线
-            if (this.showMapLine) {
-                const polyline = new AMap.Polyline({
-                    path: [
-                        [127.500704, 50.252449],
-                        [98.490382, 25.020147]
-                    ],
-                    strokeColor: '#E4BD9D',
-                    strokeWeight: 2,
-                    strokeOpacity: 1
-                })
-                polyline.setMap(amap)
-            }
+           
         },
 
         /**
@@ -733,6 +634,32 @@ export default {
          */
         backToHome() {
             this.amap.setZoomAndCenter(this.originalZoom, this.originalCenter)
+        },
+
+        /**
+         * 显示隐藏胡焕庸线
+         */
+        showHhyline() {
+            this.showMapLine = !this.showMapLine
+            if (!this.showMapLine) {
+                this.polyline.hide()
+            } else {
+                if (!this.polyline) {
+                    const polyline = new AMap.Polyline({
+                        path: [
+                            [127.500704, 50.252449],
+                            [98.490382, 25.020147]
+                        ],
+                        cursor: 'pointer',
+                        strokeColor: '#E4BD9D',
+                        strokeWeight: 2,
+                        strokeOpacity: 1
+                    })
+                    this.polyline = polyline
+                    this.amap.add(this.polyline)
+                }
+                this.polyline.show()
+            }
         }
     }
 }

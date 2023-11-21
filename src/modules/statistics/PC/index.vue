@@ -50,6 +50,10 @@
         <div class="back-to-home" v-if="showBackToHome" @click="backToHome">
             <img width="20" height="20" src="../../../assets/images/home.png" alt="">
         </div>
+
+        <div class="show-hhyline" @click="showHhyline">
+            <img :title="lineTips" width="20" height="20" :src="showHhylineImage" alt="">
+        </div>
     </div>
 </template>
   
@@ -63,7 +67,8 @@ export default {
     },
     data() {
         return {
-            showBackToHome: false
+            showBackToHome: false,
+            isShowLine: false
         }
     },
     computed: {
@@ -75,6 +80,20 @@ export default {
             if(!this.$store.state.data) return null
             const formattedDate = this.$store.state.data.date 
             return formattedDate
+        },
+        showHhylineImage() {
+            let result = 'https://bn.devfp.ps.netease.com/file/655c52c49b5c74597b256d5fKUxEPOi702'
+
+            if(!this.isShowLine) result = 'https://bn.devfp.ps.netease.com/file/655c52d26f193499fc4e2439P5IUQ0ld02'
+
+            return result
+        },
+        lineTips() {
+            let result = '显示中国人口划分线：胡焕庸线'
+
+            if(this.isShowLine) result = '隐藏中国人口划分线：胡焕庸线'
+
+            return result
         }
     },
     methods: {
@@ -85,6 +104,10 @@ export default {
         isShowBackToHome(show) {
             this.showBackToHome = show
         },
+        showHhyline() {
+            this.$parent.showHhyline()
+            this.isShowLine =!this.isShowLine
+        }
 
     },
     filters: {
@@ -93,6 +116,7 @@ export default {
         }
     },
     mounted() {
+        
     }
 }
 </script>
