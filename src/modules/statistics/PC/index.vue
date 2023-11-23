@@ -43,7 +43,7 @@
             <div class="tips">
                 <div class="tip tip-city">城区救治点</div>
                 <div class=" tip tip-basic">基层救治点</div>
-                <div class="tip-note">注：数据截止至{{ formatDate }}</div>
+                <div class="tip-note">数据更新日期：{{ formatDate }}</div>
             </div>
         </div>
 
