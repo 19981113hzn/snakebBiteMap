@@ -1,7 +1,7 @@
 const path = require('path')
 
 module.exports = {
-    publicPath: '/',
+    publicPath: '/report/',
     outputDir: process.env.outputDir,
     assetsDir: 'static',
     productionSourceMap: false,
